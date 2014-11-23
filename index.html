@@ -1,0 +1,248 @@
+<!doctype html>
+<html>
+<head>
+  <title>WebAudioDesigner | g200kg</title>
+<link href='http://fonts.googleapis.com/css?family=Audiowide' rel='stylesheet' type='text/css'>
+<style>
+body{
+  margin:0px;
+  padding:0px;
+  overflow:hidden;
+  user-select: none; /* CSS3 */
+  -moz-user-select: none; /* Firefox */
+  -webkit-user-select: none; /* Safari、Chromeなど */
+}
+.title{
+  display:inline-block;
+  font-size: 35px;
+  font-family: Audiowide;
+  margin:0px 10px;
+  padding:0px;
+}
+.desc{
+  display:inline-block;
+  font-size: 15px;
+  font-family: sans-serif;
+  margin:0px;
+  padding:0px;
+}
+.desc a{
+  color:#eef;
+}
+button {
+  margin:0px;
+  padding:0px;
+}
+#header{
+  background:#668;
+  color:#eef;
+  border:1px solid #000;
+  padding:4px;
+}
+#header img{
+  margin-right:20px
+}
+#menu{
+  position:absolute;
+  background:rgba(0,0,0,0.3);
+  top:0px;
+  left:0px;
+  margin:0px;
+  padding:5px;
+}
+.mainmenubtn{
+  width:120px;
+  padding:5px;
+}
+.menuitem{
+  width:160px;
+  padding:5px;
+}
+#menugraph{
+  background:rgba(0,0,0,0.3);
+  position:absolute;
+  left:130px;
+  width:170px;
+  padding:5px;
+  display:none;
+  text-align:center;
+}
+#menuadd{
+  background:rgba(0,0,0,0.3);
+  position:absolute;
+  left:260px;
+  width:170px;
+  padding:5px;
+  display:none;
+  text-align:center;
+}
+#popup{
+  position:absolute;
+  display:none;
+}
+#input{
+  position:absolute;
+  display:none;
+  font-family:Verdana,sans-serif;
+  font-size:10px;
+  font-weight:bold;
+}
+#select{
+  position:absolute;
+  display:none;
+  font-family:Verdana,sans-serif;
+  font-size:10px;
+  font-weight:bold;
+}
+#text{
+  position:absolute;
+  display:none;
+  font-family:Verdana,sans-serif;
+  font-size:10px;
+  font-weight:normal;
+}
+#urlpane{
+  position:absolute;
+  display:none;
+  background:#667;
+  top:10%;
+  left:10%;
+  width:80%;
+  height:40%;
+  border:1px solid #000;
+  color:#fff;
+  padding:30px;
+}
+#url{
+  position:absolute;
+  display:block;
+  top:20%;
+  left:5%;
+  background:#ffd;
+  width:90%;
+  height:70%;
+  font-family:Verdana,sans-serif;
+  font-size:10px;
+  font-weight:normal;
+}
+#jspane{
+  position:absolute;
+  display:none;
+  background:#667;
+  top:10%;
+  left:10%;
+  width:80%;
+  height:80%;
+  border:1px solid #000;
+}
+#jsfile{
+  position:absolute;
+  display:block;
+  top:5%;
+  left:5%;
+  background:#ffd;
+  width:90%;
+  height:90%;
+  font-family:Verdana,sans-serif;
+  font-size:10px;
+  font-weight:normal;
+}
+#aboutpane{
+  position:absolute;
+  display:none;
+  background:#bbd;
+  top:10%;
+  left:10%;
+  width:80%;
+  height:40%;
+  padding:30px 20px;
+  color:#000;
+  border:1px solid #000;
+}
+.panebutton1{
+  position:absolute;
+  display:block;
+  top:5px;
+  left:5px;
+  width:100px;
+  height:20px;
+}
+.panebutton2{
+  position:absolute;
+  display:block;
+  top:5px;
+  left:110px;
+  width:100px;
+  height:20px;
+}
+canvas{
+  cursor:default;
+}
+</style>
+</head>
+<body onload="Init()">
+<script src="webaudiodesigner.js"></script>
+  <div id="header">
+    <div class="title">WebAudio Designer</div>
+    <div class="desc"><a href="http://www.g200kg.com/" target="_blank">https://github.com/g200kg/webaudiodesigner</a></div>
+  </div>
+  <div id="base" style="position:relative">
+    <canvas id="cv" width="1024" height="768">
+    </canvas>
+    <input id="input"/>
+    <textarea id="text" spellcheck="false"></textarea>
+    <select id="select"></select>
+    <div id="aboutpane">
+      <button class="panebutton1" id="aboutclose">Close</button>
+      <p><b>WebAudio Designer</b> is a Web Audio API module design tool. By <b>WebAudio Designer</b>,<br/>
+        you can design and test a WebAudio engine module on GUI. It can also export as a JavaScript function.</p> 
+      <p>GitHub page : <a href="https://github.com/g200kg/webaudiodesigner">https://github.com/g200kg/webaudiodesigner</a></p>
+      <p>Licensed under MIT License except Impulse Response files.</p>
+      <p>Impulse Response files are :<br/>
+      <a href="http://www.voxengo.com/impulses/" target="_blank">http://www.voxengo.com/impulses/</a></p>
+    </div>
+    <div id="jspane">
+      <button class="panebutton1" id="jsclose">Close</button>
+      <a class="panebutton2" id="jsdownload" style="color:#fff">Download</a>
+      <textarea id="jsfile" spellcheck="false"></textarea>
+    </div>
+    <div id="urlpane">
+      <button class="panebutton1" id="urlclose">Close</button>
+      <button class="panebutton2" id="urljump">Jump to this link</button>
+      <p>Link to this patch</p>
+      <textarea id="url" spellcheck="false"></textarea>
+    </div>
+    <div id="menu">
+      <button class="mainmenubtn" id="playbtn">Play<!-- <svg width="20" height="10"><polygon id="playpgn" points="10,0 10,10 20,5" fill="green"/></svg>--></button>
+      <button class="mainmenubtn" id="menugraphbtn">Graph</button>
+      <div id="menugraph">
+        <button class="menuitem" id="newgraph">New Graph</button>
+        <button class="menuitem" id="save">Save as JavaScript file</button>
+        <button class="menuitem" id="link">Link to this patch</button>
+      </div>
+      <button class="mainmenubtn" id="menuaddbtn">Add Node</button>
+      <div id="menuadd">
+        <button class="menuitem" id="addosc">Oscillator</button>
+        <button class="menuitem" id="addbufsrc">BufferSource</button>
+        <button class="menuitem" id="addstrmsrc">MediaStreamSource(Mic)</button>
+        <button class="menuitem" id="addgain">Gain</button>
+        <button class="menuitem" id="addfilt">BiquadFilter</button>
+        <button class="menuitem" id="adddelay">Delay</button>
+        <button class="menuitem" id="addpanner">Panner</button>
+        <button class="menuitem" id="addcomp">DynamicsCompressor</button>
+        <button class="menuitem" id="addshaper">WaveShaper</button>
+        <button class="menuitem" id="addconv">Convolver</button>
+        <button class="menuitem" id="addscrproc">ScriptProcessor</button>
+        <button class="menuitem" id="addanalys">Analyser</button>
+        <button class="menuitem" id="addsplit">ChannelSplitter</button>
+        <button class="menuitem" id="addmerge">ChannelMerger</button>
+      </div>
+      <button class="mainmenubtn" id="menuaboutbtn">About</button>
+      <div id="popup">
+        <button class="menuitem" id="delnode">Delete</button><br/>
+        <button class="menuitem" id="disnode">Disconnect</button>
+      </div>
+    </div>
+</div>
+</body>
+</html>
