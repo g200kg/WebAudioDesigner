@@ -278,6 +278,15 @@ function Io(name,parent,x,y,n){
     ctx.fillStyle="#000";
     ctx.fillText(this.name,bx+this.x+4,by+this.y+13);
   };
+  this.Edit=function(){
+    var name=(this.type=="param")?this.parent.name+"."+this.name:this.parent.name;
+    for(var i=0;i<graph.nodes.length;++i){
+      var n=graph.nodes[i];
+      for(var j=0;j<n.connect.length;++j){
+        var c=n.connect[j];
+      }
+    }
+  }
 }
 function Param(x,y,w,h,tx,ty,subtype,option,name,parent){
   this.x=x,this.y=y,this.w=w,this.h=h,this.tx=tx,this.ty=ty;
@@ -1018,6 +1027,65 @@ function Graph(canvas,actx,dest){
       node.node.disconnect(1);
     this.Redraw();
   };
+  this.DisconnectWire=function(target){
+    if(target.subtype=="out"){
+      var n=target.parent;
+      for(var j=n.connect.length-1;j>=0;--j){
+        var c=n.connect[j];
+        if(c.o==target.n)
+          n.connect.splice(j,1);
+      }
+    }
+    else{
+      for(var i=this.nodes.length-1;i>=0;--i){
+        var n=this.nodes[i];
+        for(var j=n.connect.length-1;j>=0;--j){
+          var c=n.connect[j];
+          if(target.type=="param"){
+            if(c.t==target)
+              n.connect.splice(j,1);
+          }
+          else if(target.subtype=="in"){
+            if(c.t==target.parent&&c.i==target.n)
+              n.connect.splice(j,1);
+          }
+        }
+      }
+    }
+    this.ReConnect();
+    this.Redraw();
+  };
+  this.Connected=function(target){
+    if(target.subtype=="out"){
+      var n=target.parent;
+      for(var j=n.connect.length-1;j>=0;--j){
+        var c=n.connect[j];
+        if(c.o==target.n)
+          return true;
+      }
+    }
+    else if(target.subtype=="in"){
+      for(var i=this.nodes.length-1;i>=0;--i){
+        var n=this.nodes[i];
+        for(var j=n.connect.length-1;j>=0;--j){
+          var c=n.connect[j];
+          if(c.t==target.parent&&c.i==target.n)
+            return true;
+        }
+      }
+    }
+    else if(target.type=="param"){
+      for(var i=this.nodes.length-1;i>=0;--i){
+        var n=this.nodes[i];
+        for(var j=n.connect.length-1;j>=0;--j){
+          var c=n.connect[j];
+        if(c.t==target)
+          return true;
+        }
+      }
+    }
+    return false;
+  }
   this.Redraw=function(){
     this.ctx.font="bold 10px Verdana,sans-serif";
     this.ctx.fillStyle="#346";
@@ -1115,7 +1183,7 @@ function MouseDown(e){
     b.style.display="block";
     b.style.top=(item.parent.y+10)+"px";
     b.style.left=(item.parent.x+10)+"px";
-    graph.popupfocus=item.parent;
+    graph.focus=item.parent;
     return;
   }
   dragging=item;
@@ -1155,13 +1223,25 @@ function MouseMove(e){
     }
   }
 }
+function DisconnectMenu(target){
+  var m=document.getElementById("popup2");
+  m.style.left=(target.parent.x+target.x-3)+"px";
+  m.style.top=(target.parent.y+target.y+16)+"px";
+  m.style.display="block";
+  graph.focus=target;
+}
 function MouseUp(e){
   var rc=e.target.getBoundingClientRect();
   mouseX=Math.floor(e.clientX-rc.left);
   mouseY=Math.floor(e.clientY-rc.top);
   var target=graph.HitTest(mouseX,mouseY);
-  if(dragging&&dragging.type=="param"&&target==dragging){
-    target.Edit();
+  if(dragging&&(dragging.type=="param"||dragging.type=="io")&&target==dragging){
+    if(target.type=="param" && mouseX>=dragging.parent.x+5)
+      target.Edit();
+    else{
+      if(graph.Connected(target))
+        DisconnectMenu(target);
+    }
   }
   if(dragging&&target){
     if(dragging.type=="io"&&dragging.subtype=="out"){
@@ -1192,6 +1272,7 @@ function MenuClear(){
   document.getElementById("menunode").style.display="none";
   document.getElementById("menuknob").style.display="none";
   document.getElementById("popup").style.display="none";
+  document.getElementById("popup2").style.display="none";
   document.getElementById("input").style.display="none";
   document.getElementById("select").style.display="none";
   document.getElementById("text").style.display="none";
@@ -1256,10 +1337,13 @@ function MenuClick(e){
     graph.AddNode(e.target.id.substring(3),null,500,350);
     break;
   case "delnode":
-    graph.DelNode(graph.popupfocus);
+    graph.DelNode(graph.focus);
     break;
   case "disnode":
-    graph.DisconnectNode(graph.popupfocus);
+    graph.DisconnectNode(graph.focus);
+    break;
+  case "diswire":
+    graph.DisconnectWire(graph.focus);
     break;
   }
   MenuClear();
