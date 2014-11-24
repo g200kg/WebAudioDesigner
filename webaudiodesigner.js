@@ -81,8 +81,11 @@ function ExportJs(json){
   var obj=eval(json);
   var js="<script>\n//WebAudioDesigner Data:"+json+"\n\n";
   var bufs=[];
+  var strm=false;
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
+    if(o.type=="strmsrc")
+      strm=true;
     if(o.type=="bufsrc"||o.type=="conv"){
       for(var j=0;j<o.params.length;++j){
         var p=o.params[j];
@@ -129,7 +132,28 @@ function ExportJs(json){
       "}\n\n";
   }
   js+=
-  "function AudioEngine(audioctx,destination){\n"+
+  "function AudioEngine(audioctx,destination){\n";
+  if(strm){
+    js+=
+    "  function SetupStream(){\n"+
+    "    navigator.getUserMedia=(navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia);\n"+
+    "    if(navigator.getUserMedia){\n"+
+    "      navigator.getUserMedia(\n"+
+    "        {audio:true},\n"+
+    "        function(strm){\n"+
+    "          this.strm=strm;\n"+
+    "        }.bind(this),\n"+
+    "        function(err){\n"+
+    "          alert('getUserMedia Error.');\n"+
+    "        }.bind(this)\n"+
+    "      );\n"+
+    "    }\n"+
+    "    else{\n"+
+    "      alert('getUserMedia() not supported.');\n"+
+    "    }\n"+
+    "  }\n";
+  }
+  js+=
   "  this.audioctx = audioctx;\n"+
   "  if(!audioctx){\n"+
   "     AudioContext = window.AudioContext||window.webkitAudioContext;\n"+
@@ -142,7 +166,7 @@ function ExportJs(json){
   for(var i=1;i<obj.length;++i){
     var o=obj[i];
     switch(o.type){
-    case "strm":
+    case "strmsrc":
       js+="  this."+o.name+" = this.audioctx.createMediaStreamSource();\n";
       js+=SetupParams(o,2);
       break;
@@ -477,7 +501,7 @@ function Node(graph,name,subtype,x,y){
     this.node=actx.destination;
     this.params=[];
     break;
-  case "strm":
+  case "strmsrc":
     navigator.getUserMedia=(navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia);
     if(navigator.getUserMedia){
       navigator.getUserMedia(
@@ -500,7 +524,7 @@ function Node(graph,name,subtype,x,y){
     }
     this.h=2*20+1;
     this.ioh=20;
-    this.w=100;
+    this.w=150;
     this.io=[new Io("out",this,this.w-50,20,0)];
     this.params=[];
     break;
