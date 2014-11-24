@@ -1036,12 +1036,14 @@ function Graph(canvas,actx,dest){
         if(c.o==target.n)
           n.connect.splice(j,1);
       }
+      n.node.disconnect(target.parent.node,target.n);
     }
     else{
       for(var i=this.nodes.length-1;i>=0;--i){
         var n=this.nodes[i];
         for(var j=n.connect.length-1;j>=0;--j){
           var c=n.connect[j];
+          n.node.disconnect(c.o);
           if(target.type=="param"){
             if(c.t==target)
               n.connect.splice(j,1);
