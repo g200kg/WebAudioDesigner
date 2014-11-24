@@ -827,6 +827,7 @@ function Graph(canvas,actx,dest){
   canvas.onmousedown=MouseDown;
   canvas.onmousemove=MouseMove;
   canvas.onmouseup=MouseUp;
+  canvas.oncontextmenu=function(e){e.preventDefault();};
   canvas.ondblclick=DblClick;
   this.ctx=canvas.getContext("2d");
   this.input=document.getElementById("input");
