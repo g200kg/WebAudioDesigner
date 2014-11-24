@@ -54,6 +54,9 @@ button {
   width:120px;
   padding:5px;
 }
+.menudropdown{
+  width:170px;
+}
 .menuitem{
   width:160px;
   padding:5px;
@@ -62,16 +65,22 @@ button {
   background:rgba(0,0,0,0.3);
   position:absolute;
   left:130px;
-  width:170px;
   padding:5px;
   display:none;
   text-align:center;
 }
-#menuadd{
+#menunode{
   background:rgba(0,0,0,0.3);
   position:absolute;
   left:260px;
-  width:170px;
+  padding:5px;
+  display:none;
+  text-align:center;
+}
+#menuknob{
+  background:rgba(0,0,0,0.3);
+  position:absolute;
+  left:390px;
   padding:5px;
   display:none;
   text-align:center;
@@ -164,24 +173,35 @@ button {
   display:block;
   top:5px;
   left:5px;
-  width:100px;
+  width:140px;
   height:20px;
 }
 .panebutton2{
   position:absolute;
   display:block;
   top:5px;
-  left:110px;
-  width:100px;
+  left:140px;
+  width:140px;
   height:20px;
 }
 canvas{
   cursor:default;
 }
+.knobpane{
+  position:absolute;
+  background:#ccc;
+  top:110px;
+  left:110px;
+  padding:10px 10px 30px 10px;
+}
+webaudio-knob{
+}
 </style>
+    <script src="js/platform.js"></script>
+    <link rel="import" href="webcomponents/polymer.html">
+    <link rel="import" href="webcomponents/controls.html">
 </head>
 <body onload="Init()">
-<script src="webaudiodesigner.js"></script>
   <div id="header">
     <div class="title">WebAudio Designer</div>
     <div class="desc"><a href="https://github.com/g200kg/webaudiodesigner" target="_blank">https://github.com/g200kg/webaudiodesigner</a></div>
@@ -189,6 +209,7 @@ canvas{
   <div id="base" style="position:relative">
     <canvas id="cv" width="1024" height="768">
     </canvas>
+    <webaudio-knob diameter="32"></webaudio-knob>
     <input id="input"/>
     <textarea id="text" spellcheck="false"></textarea>
     <select id="select"></select>
@@ -215,13 +236,13 @@ canvas{
     <div id="menu">
       <button class="mainmenubtn" id="playbtn">Play<!-- <svg width="20" height="10"><polygon id="playpgn" points="10,0 10,10 20,5" fill="green"/></svg>--></button>
       <button class="mainmenubtn" id="menugraphbtn">Graph</button>
-      <div id="menugraph">
+      <div class="menudropdown" id="menugraph">
         <button class="menuitem" id="newgraph">New Graph</button>
-        <button class="menuitem" id="save">Save as JavaScript file</button>
+        <button class="menuitem" id="export">Export as JavaScript file</button>
         <button class="menuitem" id="link">Link to this patch</button>
       </div>
-      <button class="mainmenubtn" id="menuaddbtn">Add Node</button>
-      <div id="menuadd">
+      <button class="mainmenubtn" id="menunodebtn">Add Node</button>
+      <div class="menudropdown" id="menunode">
         <button class="menuitem" id="addosc">Oscillator</button>
         <button class="menuitem" id="addbufsrc">BufferSource</button>
         <button class="menuitem" id="addstrmsrc">MediaStreamSource(Mic)</button>
@@ -237,6 +258,10 @@ canvas{
         <button class="menuitem" id="addsplit">ChannelSplitter</button>
         <button class="menuitem" id="addmerge">ChannelMerger</button>
       </div>
+<!--      <button class="mainmenubtn" id="menuknobbtn">Add Knob</button>-->
+      <div class="menudropdown" id="menuknob">
+        <button class="menuitem" id="addknob">Knob</button>
+      </div>
       <button class="mainmenubtn" id="menuaboutbtn">About</button>
       <div id="popup">
         <button class="menuitem" id="delnode">Delete</button><br/>
@@ -244,5 +269,6 @@ canvas{
       </div>
     </div>
 </div>
+<script src="webaudiodesigner.js"></script>
 </body>
 </html>

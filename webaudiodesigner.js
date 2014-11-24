@@ -1,12 +1,7 @@
-
-var canvas,context;
 var audioctx;
 var graph;
 var dragging=null;
 var draggingoffset={"x":0,"y":0};
-var input,text,select;
-var inputfocus=null;
-var popupfocus=null;
 
 var defaultpatch=[{"type":"destination","name":"destination","x":568,"y":86,"params":[],"connect":[]},{"type":"osc","name":"osc2","x":384,"y":164,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"440"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"destination","o":0,"i":0}]},{"type":"gain","name":"gain1","x":200,"y":300,"params":[{"name":"gain","type":"a","value":"1000"}],"connect":[{"t":"osc2.detune","o":0}]},{"type":"osc","name":"osc1","x":49,"y":150,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"2"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"gain1","o":0,"i":0}]}];
 
@@ -390,38 +385,38 @@ function Param(x,y,w,h,tx,ty,subtype,option,name,parent){
     }
     if(bx!=this.bx||by!=this.by)
       this.bx=bx,this.by=by;
-    if(inputfocus==this){
+    if(graph.inputfocus==this){
       switch(this.subtype){
       case "a":
       case "n":
-        input.style.left=(this.parent.x+this.x+this.tx)+"px";
-        input.style.top=(this.parent.y+this.y)+"px";
-        input.style.width=(this.parent.w-this.tx-5)+"px";
-        input.style.height="15px";
-        input.style.display="block";
-        text.style.display="none";
-        select.style.display="none";
+        graph.input.style.left=(this.parent.x+this.x+this.tx)+"px";
+        graph.input.style.top=(this.parent.y+this.y)+"px";
+        graph.input.style.width=(this.parent.w-this.tx-5)+"px";
+        graph.input.style.height="15px";
+        graph.input.style.display="block";
+        graph.text.style.display="none";
+        graph.select.style.display="none";
         break;
       case "tc":
       case "ts":
-        text.style.left=(this.parent.x+this.x)+"px";
-        text.style.top=(this.parent.y+this.y)+"px";
-        text.style.width=this.tx+"px";
-        text.style.height=this.ty+"px";
-        text.style.display="block";
-        input.style.display="none";
-        select.style.display="none";
+        graph.text.style.left=(this.parent.x+this.x)+"px";
+        graph.text.style.top=(this.parent.y+this.y)+"px";
+        graph.text.style.width=this.tx+"px";
+        graph.text.style.height=this.ty+"px";
+        graph.text.style.display="block";
+        graph.input.style.display="none";
+        graph.select.style.display="none";
         break;
       case "s":
       case "b":
       case "ob":
-        select.style.left=(this.parent.x+this.x+this.tx)+"px";
-        select.style.top=(this.parent.y+this.y+this.ty+1)+"px";
-        select.style.width=(this.parent.w-this.tx)+"px";
-        select.style.height="19px";
-        select.style.display="block";
-        input.style.display="none";
-        text.style.display="none";
+        graph.select.style.left=(this.parent.x+this.x+this.tx)+"px";
+        graph.select.style.top=(this.parent.y+this.y+this.ty+1)+"px";
+        graph.select.style.width=(this.parent.w-this.tx)+"px";
+        graph.select.style.height="19px";
+        graph.select.style.display="block";
+        graph.input.style.display="none";
+        graph.text.style.display="none";
         break;
       }
     }
@@ -430,54 +425,54 @@ function Param(x,y,w,h,tx,ty,subtype,option,name,parent){
     switch(this.subtype){
     case "s":
     case "ob":
-      while(select.childNodes.length)
-        select.removeChild(select.childNodes[0]);
+      while(graph.select.childNodes.length)
+        graph.select.removeChild(graph.select.childNodes[0]);
       for(i in this.option){
         var e=document.createElement("option");
         e.innerHTML=this.option[i];
         if(this.value==this.option[i])
           e.setAttribute("selected",1);
-        select.appendChild(e);
+        graph.select.appendChild(e);
       }
-      select.onchange=function(e){
+      graph.select.onchange=function(e){
         this.Set(e.target.value);
         graph.Redraw();
       }.bind(this);
-      inputfocus=this;
+      graph.inputfocus=this;
       graph.Redraw();
-      select.focus();
+      graph.select.focus();
       return;
     case "b":
       this.Set(!this.value);
       graph.Redraw();
       return;
     case "a":
-      input.value=this.value;
-      input.onchange=function(e){
+      graph.input.value=this.value;
+      graph.input.onchange=function(e){
         this.Set(e.target.value);
       }.bind(this);
-      inputfocus=this;
+      graph.inputfocus=this;
       graph.Redraw();
-      input.focus();
+      graph.input.focus();
       return;
     case "n":
-      input.value=this.value;
-      input.onchange=function(e){
+      graph.input.value=this.value;
+      graph.input.onchange=function(e){
         this.Set(e.target.value);
       }.bind(this);
-      inputfocus=this;
+      graph.inputfocus=this;
       graph.Redraw();
-      input.focus();
+      graph.input.focus();
       return;
     case "tc":
     case "ts":
-      text.value=this.value;
-      text.onchange=function(e){
+      graph.text.value=this.value;
+      graph.text.onchange=function(e){
         this.Set(e.target.value);
       }.bind(this);
-      inputfocus=this;
+      graph.inputfocus=this;
       graph.Redraw();
-      text.focus();
+      graph.text.focus();
       return;
     }
   };
@@ -490,8 +485,13 @@ function Node(graph,name,subtype,x,y){
   this.type="node";
   this.subtype=subtype;
   this.btn={"type":"btn","parent":this};
-  this.play={"type":"play","parent":this};
+  this.playbtn={"type":"play","parent":this};
+  this.modebtn={"type":"mode","parent":this};
   this.playing=false;
+  this.mode=0;
+  this.ToggleMode=function(){
+    this.mode^=1;
+  }
   switch(subtype){
   case "destination":
     this.h=2*20+1;
@@ -568,8 +568,6 @@ function Node(graph,name,subtype,x,y){
       new Param(0,40,this.w,20,70,0,"s",["sine","square","sawtooth","triangle"],"type",this),
       new Param(0,60,this.w,20,70,0,"a",null,"frequency",this),
       new Param(0,80,this.w,20,70,0,"a",null,"detune",this)];
-//  this.node.start(0);
-//  this.playing=true;
     this.playing=false;
     break;
   case "gain":
@@ -633,7 +631,7 @@ function Node(graph,name,subtype,x,y){
     ];
     break;
   case "analys":
-    this.h=8*20+1;
+    this.h=181;
     this.ioh=20;
     this.w=185;
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
@@ -646,16 +644,28 @@ function Node(graph,name,subtype,x,y){
     ];
     this.buf=new Uint8Array(185);
     this.timerfunc=function(e){
-      this.node.getByteFrequencyData(this.buf);
-      graph.ctx.fillStyle="#666";
-      graph.ctx.fillRect(this.x+1,this.y+122,183,38);
+      if(this.mode)
+        this.node.getByteTimeDomainData(this.buf);
+      else
+        this.node.getByteFrequencyData(this.buf);
+      graph.ctx.fillStyle="#000";
+      graph.ctx.fillRect(this.x+1,this.y+122,183,58);
       graph.ctx.fillStyle="#0c0";
-      for(var i=0;i<128;++i){
-        var v=this.buf[i]*35/256;
-        graph.ctx.fillRect(this.x+i,this.y+160-v,1,v);
+      for(var i=1;i<this.w-1;++i){
+        var v=this.buf[i]*55/256;
+        graph.ctx.fillRect(this.x+i,this.y+180,1,-v);
       }
+      var i;
+      for(i=0;i<graph.nodes.length;++i)
+        if(graph.nodes[i]==this)
+          break;
+      for(++i;i<graph.nodes.length;++i){
+        graph.nodes[i].Redraw(this.graph.ctx);
+      }
+      graph.ctx.fillStyle="#fff";
+      graph.ctx.fillText(this.mode?"TimeDomain":"Frequency",this.x+10,this.y+140);
     };
-    this.timerid=setInterval(this.timerfunc.bind(this),50);
+    this.timerid=setInterval(this.timerfunc.bind(this),200);
     break;
   case "shaper":
     this.h=7*20+1;
@@ -781,7 +791,10 @@ function Node(graph,name,subtype,x,y){
       return this.btn;
     }
     if((this.subtype=="osc"||this.subtype=="bufsrc") &&x>=this.x+20&&x<this.x+40&&y>=this.y+20&&y<this.y+40){
-      return this.play;
+      return this.playbtn;
+    }
+    if(this.subtype=="analys"&&y>=this.y+120){
+      return this.modebtn;
     }
     return this;
   };
@@ -800,8 +813,16 @@ function Node(graph,name,subtype,x,y){
       this.node.connect(target.node,o,i);
   };
 }
-function Graph(ctx,actx,dest){
-  this.ctx=ctx;
+function Graph(canvas,actx,dest){
+  this.canvas=canvas;
+  canvas.onmousedown=MouseDown;
+  canvas.onmousemove=MouseMove;
+  canvas.onmouseup=MouseUp;
+  canvas.ondblclick=DblClick;
+  this.ctx=canvas.getContext("2d");
+  this.input=document.getElementById("input");
+  this.select=document.getElementById("select");
+  this.text=document.getElementById("text");
   this.actx=actx;
   this.dest=dest;
   this.nodes=[new Node(this,"destination","destination",800,100)];
@@ -875,8 +896,9 @@ function Graph(ctx,actx,dest){
     this.Redraw();
   };
   this.About=function(){
-    document.getElementById("menuadd").style.display="none";
+    document.getElementById("menunode").style.display="none";
     document.getElementById("menugraph").style.display="none";
+    document.getElementById("menuknob").style.display="none";
     document.getElementById("aboutpane").style.display="block";
     document.getElementById("urlpane").style.display="none";
     document.getElementById("jspane").style.display="none";
@@ -892,7 +914,7 @@ function Graph(ctx,actx,dest){
     document.getElementById("urlclose").onclick=function(){document.getElementById("urlpane").style.display="none";};
     document.getElementById("urljump").onclick=function(){location.href=document.getElementById("url").value;};
   };
-  this.Save=function(){
+  this.Export=function(){
     var o=this.GetJson();
     ExportJs(JSON.stringify(o));
   };
@@ -1084,12 +1106,16 @@ function MouseDown(e){
     }
     return;
   }
+  if(item&&item.type=="mode"){
+    item.parent.ToggleMode();
+    return;
+  }
   if(item&&item.type=="btn"&&item.parent.subtype!="destination"){
     var b=document.getElementById("popup");
     b.style.display="block";
     b.style.top=(item.parent.y+10)+"px";
     b.style.left=(item.parent.x+10)+"px";
-    popupfocus=item.parent;
+    graph.popupfocus=item.parent;
     return;
   }
   dragging=item;
@@ -1158,17 +1184,18 @@ function MouseUp(e){
   graph.Redraw();
 }
 function Resize(){
-  canvas.width=window.innerWidth;
+  graph.canvas.width=window.innerWidth;
   graph.Redraw();
 }
 function MenuClear(){
   document.getElementById("menugraph").style.display="none";
-  document.getElementById("menuadd").style.display="none";
+  document.getElementById("menunode").style.display="none";
+  document.getElementById("menuknob").style.display="none";
   document.getElementById("popup").style.display="none";
   document.getElementById("input").style.display="none";
   document.getElementById("select").style.display="none";
   document.getElementById("text").style.display="none";
-  inputfocus=null;
+  graph.inputfocus=null;
 }
 function MenuClick(e){
   switch(e.target.id){
@@ -1177,14 +1204,22 @@ function MenuClick(e){
     graph.Play();
     return;
   case "menugraphbtn":
-    document.getElementById("menuadd").style.display="none";
+    document.getElementById("menunode").style.display="none";
+    document.getElementById("menuknob").style.display="none";
     var grp=document.getElementById("menugraph");
     grp.style.display=(grp.style.display=="block")?"none":"block";
     return;
-  case "menuaddbtn":
+  case "menunodebtn":
     document.getElementById("menugraph").style.display="none";
-    var add=document.getElementById("menuadd");
-    add.style.display=(add.style.display=="block")?"none":"block";
+    document.getElementById("menuknob").style.display="none";
+    var node=document.getElementById("menunode");
+    node.style.display=(node.style.display=="block")?"none":"block";
+    return;
+  case "menuknobbtn":
+    document.getElementById("menunode").style.display="none";
+    document.getElementById("menugraph").style.display="none";
+    var knob=document.getElementById("menuknob");
+    knob.style.display=(knob.style.display=="block")?"none":"block";
     return;
   case "menuaboutbtn":
     graph.About();
@@ -1192,11 +1227,17 @@ function MenuClick(e){
   case "newgraph":
     graph.New();
     break;
-  case "save":
-    graph.Save();
+  case "export":
+    graph.Export();
     break;
   case "link":
     graph.Link();
+    break;
+  case "addknob":
+    var e=document.createElement("div");
+    e.setAttribute("class","knobpane");
+    e.innerHTML="<webaudio-knob diameter='32'></webaudio-knob>";
+    document.getElementById("base").appendChild(e);
     break;
   case "addosc":
   case "addbufsrc":
@@ -1215,10 +1256,10 @@ function MenuClick(e){
     graph.AddNode(e.target.id.substring(3),null,500,350);
     break;
   case "delnode":
-    graph.DelNode(popupfocus);
+    graph.DelNode(graph.popupfocus);
     break;
   case "disnode":
-    graph.DisconnectNode(popupfocus);
+    graph.DisconnectNode(graph.popupfocus);
     break;
   }
   MenuClear();
@@ -1229,18 +1270,9 @@ function Init(){
   document.onkeydown=KeyDown;
   document.onkeypress=KeyPress;
   window.onresize=Resize;
-  canvas=document.getElementById("cv");
-  canvas.onmousedown=MouseDown;
-  canvas.onmousemove=MouseMove;
-  canvas.onmouseup=MouseUp;
-  canvas.ondblclick=DblClick;
-  context=canvas.getContext("2d");
-  input=document.getElementById("input");
-  select=document.getElementById("select");
-  text=document.getElementById("text");
   AudioContext=window.AudioContext||window.webkitAudioContext;
   audioctx=new AudioContext();
-  graph=new Graph(context,audioctx,audioctx.destination);
+  graph=new Graph(document.getElementById("cv"),audioctx,audioctx.destination);
   Resize();
   var vars=document.location.search.substring(1).split("&");
   patch=null;

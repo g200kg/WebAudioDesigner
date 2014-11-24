@@ -1,0 +1,32 @@
+<script>
+//WebAudioDesigner Data:[{"type":"destination","name":"destination","x":694,"y":116,"params":[],"connect":[]},{"type":"osc","name":"osc1","x":401,"y":268,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"440"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"destination","o":0,"i":0}]},{"type":"gain","name":"gain1","x":257,"y":442,"params":[{"name":"gain","type":"a","value":"300"}],"connect":[{"t":"osc1.frequency","o":0}]},{"type":"osc","name":"osc2","x":95,"y":293,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"1"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"gain1","o":0,"i":0}]}]
+
+function AudioEngine(audioctx,destination){
+  this.audioctx = audioctx;
+  if(!audioctx){
+     AudioContext = window.AudioContext||window.webkitAudioContext;
+     this.audioctx = new AudioContext();
+  }
+  if(!destination)
+    this.destination=this.audioctx.destination;
+  this.gain1 = this.audioctx.createGain();
+  this.gain1.gain.value = 300;
+  this.start=function(){
+    this.osc1 = this.audioctx.createOscillator();
+    this.osc1.type = "sine";
+    this.osc1.frequency.value = 440;
+    this.osc1.detune.value = 0;
+    this.osc2 = this.audioctx.createOscillator();
+    this.osc2.type = "square";
+    this.osc2.frequency.value = 1;
+    this.osc2.detune.value = 0;
+    this.osc1.connect(this.destination,0);
+    this.gain1.connect(this.osc1.frequency,0);
+    this.osc2.connect(this.gain1,0);
+    this.osc1.start(0);
+    this.osc2.start(0);
+  };
+}
+window.addEventListener('load',function(){audioengine=new AudioEngine()});
+</script>
+<button onclick='audioengine.start()'>Start</button>
