@@ -172,6 +172,13 @@ button {
   padding:30px 20px;
   color:#000;
   border:1px solid #000;
+  overflow:scroll;
+}
+#aboutpane table{
+  border:1px solid #888;
+}
+#aboutpane table td{
+  border:1px solid #888;
 }
 .panebutton1{
   position:absolute;
@@ -219,12 +226,38 @@ webaudio-knob{
     <select id="select"></select>
     <div id="aboutpane">
       <button class="panebutton1" id="aboutclose">Close</button>
+      <h2>Introduction</h2>
       <p><b>WebAudio Designer</b> is a Web Audio API module design tool. By <b>WebAudio Designer</b>,<br/>
         you can design and test a WebAudio engine module on GUI. It can also export as a JavaScript function.</p>
       <p>GitHub page : <a href="https://github.com/g200kg/webaudiodesigner">https://github.com/g200kg/webaudiodesigner</a></p>
+      <h2>License</h2>
       <p>Licensed under MIT License except Impulse Response files.</p>
       <p>Impulse Response files are :<br/>
       <a href="http://www.voxengo.com/impulses/" target="_blank">http://www.voxengo.com/impulses/</a></p>
+      <h2>Usage</h2>
+      <h4>Menu</h4>
+        <table><tr><th>Menu</th><th>Description</th></tr>
+        <tr><td>Play</td><td>Start all OSC/BufferSource</td></tr>
+        <tr><td>Graph - New</td><td>Graph Clear current graph</td></tr>
+        <tr><td>Graph - Export as JavaScript file</td><td>Export as simple JavaScript code</td></tr>
+        <tr><td>Graph - Link to this patch</td><td>Display a URL that contain current patch</td></tr>
+        <tr><td>Add Node - (Node type)</td><td>Add specified node</td></tr>
+        <tr><td>About</td><td>Display info page</td></tr>
+        </table>
+      <h4>Add node</h4>
+        <p>Select from menu "Add Node".</p>
+      <h4>Delete node</h4>
+        <p>Select node's pop-up menu "Delete" that will be appear when clicking node's upper left corner square.</p>
+      <h4>Make Connection</h4>
+        <ul>
+          <li>Drag "out" to "in" or parameters that has green semicircle.</li>
+          <li>Drag "in" or parameters that has green semicircle to "out".</li>
+        </ul>
+      <h4>Delete Connection</h4>
+        <ul>
+          <li>Click connected "in", "out" or parameter's green semicircle, then select "Disconnection".</li>
+          <li>Click node's upper left corner square and select "Delete" menu. This will disconnect all connection from this node.</li>
+        </ul>
     </div>
     <div id="jspane">
       <button class="panebutton1" id="jsclose">Close</button>

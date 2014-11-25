@@ -130,13 +130,14 @@ function ExportJs(json){
   "function AudioEngine(audioctx,destination){\n";
   if(strm){
     js+=
-    "  function SetupStream(){\n"+
+    "  this.SetupStream=function(){\n"+
     "    navigator.getUserMedia=(navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia);\n"+
     "    if(navigator.getUserMedia){\n"+
     "      navigator.getUserMedia(\n"+
     "        {audio:true},\n"+
     "        function(strm){\n"+
     "          this.strm=strm;\n"+
+    "          this.strmsrc1 = this.audioctx.createMediaStreamSource(this.strm);\n"+
     "        }.bind(this),\n"+
     "        function(err){\n"+
     "          alert('getUserMedia Error.');\n"+
@@ -146,7 +147,7 @@ function ExportJs(json){
     "    else{\n"+
     "      alert('getUserMedia() not supported.');\n"+
     "    }\n"+
-    "  }\n";
+    "  };\n";
   }
   js+=
   "  this.audioctx = audioctx;\n"+
@@ -155,15 +156,14 @@ function ExportJs(json){
   "     this.audioctx = new AudioContext();\n"+
   "  }\n"+
   "  if(!destination)\n"+
-  "    this.destination=this.audioctx.destination;\n";
+  "    this.destination=this.audioctx.destination;\n"+
+  "  this.SetupStream();\n";
   if(bufs.length)
     js+="  this.buffers = LoadBuffers(this.audioctx,sampleurl);\n";
   for(var i=1;i<obj.length;++i){
     var o=obj[i];
     switch(o.type){
     case "strmsrc":
-      js+="  this."+o.name+" = this.audioctx.createMediaStreamSource();\n";
-      js+=SetupParams(o,2);
       break;
     case "gain":
       js+="  this."+o.name+" = this.audioctx.createGain();\n";
@@ -211,7 +211,7 @@ function ExportJs(json){
   }
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
-    if(o.type!="osc"&&o.type!="bufsrc"){
+    if(o.type!="osc"&&o.type!="bufsrc"&&o.type!="strmsrc"){
       Connect(o,2,false);
     }
   }
@@ -230,7 +230,7 @@ function ExportJs(json){
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
     Connect(o,4,true);
-    if(o.type=="osc"||o.type=="bufsrc")
+    if(o.type=="osc"||o.type=="bufsrc"||o.type=="strmsrc")
       Connect(o,4,false);
   }
   for(var i=0;i<obj.length;++i){
@@ -255,11 +255,53 @@ function ExportJs(json){
   link.setAttribute("href",bURL);
   link.setAttribute("download","WebAudiodesigner.html")
 }
+function Button(name,parent,x,y,w,h){
+  this.name=name;
+  this.parent=parent;
+  this.x=x,this.y=y,this.w=w,this.h=h;
+  this.type="btn";
+  this.press=false;
+  this.Redraw=function(ctx,bx,by){
+    var x=bx+this.x;
+    var y=by+this.y;
+    ctx.fillStyle="#000";
+    ctx.fillRect(x,y,this.w,this.h);
+    if(this.press)
+      ctx.fillStyle="#888";
+    else
+      ctx.fillStyle="#ccc";
+    ctx.fillRect(x+1,y+1,this.w-2,this.h-2);
+    ctx.fillStyle="#000";
+    switch(this.name){
+    case "node":
+      ctx.fillStyle="#e84";
+      ctx.fillRect(x+2,y+2,this.w-4,this.h-4);
+      break;
+    case "play":
+      ctx.beginPath();
+      ctx.moveTo(x+this.w*.25,y+this.h*.2);
+      ctx.lineTo(x+this.w*.75,y+this.h*.5);
+      ctx.lineTo(x+this.w*.25,y+this.h*.8);
+      ctx.fill();
+      break;
+    case "mode":
+      if(this.press)
+        ctx.fillText("Time",x+18,y+10);
+      else
+        ctx.fillText("Freq",x+18,y+10);
+      break;
+    }
+  };
+  this.HitTest=function(x,y){
+    if(x>=this.x&&x<this.x+this.w&&y>=this.y&&y<this.y+this.h)
+      return this;
+    return null;
+  };
+}
 function Io(name,parent,x,y,n){
   this.name=name;
   this.parent=parent;
-  this.x=x;
-  this.y=y,this.w=50,this.h=20;
+  this.x=x,this.y=y,this.w=50,this.h=20;
   this.n=n;
   this.type="io";
   this.subtype=(name=="in")?"in":"out";
@@ -493,14 +535,6 @@ function Node(graph,name,subtype,x,y){
   this.connect=[];
   this.type="node";
   this.subtype=subtype;
-  this.btn={"type":"btn","parent":this};
-  this.playbtn={"type":"play","parent":this};
-  this.modebtn={"type":"mode","parent":this};
-  this.playing=false;
-  this.mode=0;
-  this.ToggleMode=function(){
-    this.mode^=1;
-  }
   switch(subtype){
   case "destination":
     this.h=2*20+1;
@@ -509,33 +543,41 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0)];
     this.node=actx.destination;
     this.params=[];
+    this.buttons={};
     break;
   case "strmsrc":
-    navigator.getUserMedia=(navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia);
-    if(navigator.getUserMedia){
-      navigator.getUserMedia(
-        {audio:true},
-        function(strm){
-          this.node=actx.createMediaStreamSource(strm);
-        }.bind(this),
-        function(err){
-          alert("getUserMedia Error.");
-          this.type=null;
-          MenuClear();
-        }.bind(this)
-      );
+    if(graph.strm==null){
+      navigator.getUserMedia=(navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia);
+      if(navigator.getUserMedia){
+        navigator.getUserMedia(
+          {audio:true},
+          function(strm){
+            graph.strm=strm;
+            this.node=actx.createMediaStreamSource(strm);
+          }.bind(this),
+          function(err){
+            alert("getUserMedia Error.");
+            this.type=null;
+            MenuClear();
+          }.bind(this)
+        );
+      }
+      else{
+        alert("getUserMedia() not supported.");
+        this.type=null;
+        MenuClear();
+        return;
+      }
     }
     else{
-      alert("getUserMedia() not supported.");
-      this.type=null;
-      MenuClear();
-      return;
+      this.node=actx.createMediaStreamSource(graph.strm);
     }
     this.h=2*20+1;
     this.ioh=20;
     this.w=150;
     this.io=[new Io("out",this,this.w-50,20,0)];
     this.params=[];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "split":
     this.h=3*20+1;
@@ -544,6 +586,7 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0),new Io("out",this,this.w-50,40,1)];
     this.node=actx.createChannelSplitter();
     this.params=[];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "merge":
     this.h=3*20+1;
@@ -552,6 +595,7 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("in",this,0,40,1),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createChannelMerger();
     this.params=[];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "bufsrc":
     this.h=141;
@@ -566,6 +610,7 @@ function Node(graph,name,subtype,x,y){
       new Param(0,100,this.w,20,90,0,"n",null,"loopEnd",this),
       new Param(0,120,this.w,20,60,0,"ob",["loop.wav","rhythm.wav","voice.mp3","snare.wav"],"buffer",this),
     ]
+    this.buttons={"play":new Button("play",this,20,24,20,14),"node":new Button("node",this,3,3,14,14)};
     break;
   case "osc":
     this.h=5*20+1;
@@ -577,7 +622,7 @@ function Node(graph,name,subtype,x,y){
       new Param(0,40,this.w,20,70,0,"s",["sine","square","sawtooth","triangle"],"type",this),
       new Param(0,60,this.w,20,70,0,"a",null,"frequency",this),
       new Param(0,80,this.w,20,70,0,"a",null,"detune",this)];
-    this.playing=false;
+    this.buttons={"play":new Button("play",this,20,24,20,14),"node":new Button("node",this,3,3,14,14)};
     break;
   case "gain":
     this.h=3*20+1;
@@ -586,6 +631,7 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createGain();
     this.params=[new Param(0,40,this.w,20,60,0,"a",null,"gain",this)];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "filt":
     this.h=7*20+1;
@@ -598,7 +644,9 @@ function Node(graph,name,subtype,x,y){
       new Param(0,60,this.w,20,80,0,"a",null,"frequency",this),
       new Param(0,80,this.w,20,80,0,"a",null,"detune",this),
       new Param(0,100,this.w,20,80,0,"a",null,"Q",this),
-      new Param(0,120,this.w,20,80,0,"a",null,"gain",this)];
+      new Param(0,120,this.w,20,80,0,"a",null,"gain",this)
+    ];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "comp":
     this.h=7*20+1;
@@ -613,6 +661,7 @@ function Node(graph,name,subtype,x,y){
       new Param(0,100,this.w,20,70,0,"a",null,"attack",this),
       new Param(0,120,this.w,20,70,0,"a",null,"release",this),
     ];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "delay":
     this.h=3*20+1;
@@ -621,6 +670,7 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createDelay();
     this.params=[new Param(0,40,this.w,20,70,0,"a",null,"delayTime",this)];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "panner":
     this.h=10*20+1;
@@ -638,6 +688,7 @@ function Node(graph,name,subtype,x,y){
       new Param(0,160,this.w,20,110,0,"n",null,"coneOuterAngle",this),
       new Param(0,180,this.w,20,110,0,"n",null,"coneOuterGain",this)
     ];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "analys":
     this.h=181;
@@ -651,9 +702,10 @@ function Node(graph,name,subtype,x,y){
       new Param(0,80,this.w,20,150,0,"n",null,"maxDecibels",this),
       new Param(0,100,this.w,20,150,0,"n",null,"smoothingTimeConstant",this)
     ];
+    this.buttons={"mode":new Button("mode",this,60,24,65,14),"node":new Button("node",this,3,3,14,14)};
     this.buf=new Uint8Array(185);
     this.timerfunc=function(e){
-      if(this.mode)
+      if(this.buttons.mode.press)
         this.node.getByteTimeDomainData(this.buf);
       else
         this.node.getByteFrequencyData(this.buf);
@@ -671,8 +723,6 @@ function Node(graph,name,subtype,x,y){
       for(++i;i<graph.nodes.length;++i){
         graph.nodes[i].Redraw(this.graph.ctx);
       }
-      graph.ctx.fillStyle="#fff";
-      graph.ctx.fillText(this.mode?"TimeDomain":"Frequency",this.x+10,this.y+140);
     };
     this.timerid=setInterval(this.timerfunc.bind(this),200);
     break;
@@ -686,6 +736,7 @@ function Node(graph,name,subtype,x,y){
       new Param(0,40,this.w,20,80,0,"s",["none","2x","4x"],"oversample",this),
       new Param(0,60,this.w,80,170,120,"tc","new Float32Array([\n-0.5,-0.5,0,0.5,0.5\n])","curve",this),
     ];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "conv":
     this.h=5*20+1;
@@ -697,6 +748,7 @@ function Node(graph,name,subtype,x,y){
       new Param(0,40,this.w,20,70,0,"b",null,"normalize",this),
       new Param(0,60,this.w,40,4,20,"ob",["Five Columns Long.wav","French 18th Century Salon.wav","Narrow Bumpy Space.wav"],"buffer",this),
     ];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "scrproc":
     this.h=81;
@@ -717,6 +769,7 @@ function Node(graph,name,subtype,x,y){
         "  }\n"+
         "}","onaudioprocess",this),
     ];
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   }
   this.RestartNode=function(){
@@ -735,7 +788,7 @@ function Node(graph,name,subtype,x,y){
       this.node.loop=this.params[1].value;
       this.node.loopStart=this.params[2].value;
       this.node.loopEnd=this.params[3].value;
-      this.node.onended=function(){this.playing=false;graph.Redraw()}.bind(this);
+      this.node.onended=function(){this.buttons.play.press=false;graph.Redraw()}.bind(this);
       this.node.buffer=this.graph.buffers[this.params[4].value].data;
       break;
     }
@@ -755,31 +808,15 @@ function Node(graph,name,subtype,x,y){
     case "destination":
       ctx.fillText("DESTINATION",this.x+20,this.y+13);
       break;
-    case "osc":
-    case "bufsrc":
-      ctx.fillRect(this.x+20,this.y+24,20,13);
-      if(this.playing){
-        ctx.fillStyle="#888";
-        ctx.fillRect(this.x+21,this.y+25,18,11);
-      }
-      else{
-        ctx.fillStyle="#ccc";
-        ctx.fillRect(this.x+21,this.y+25,18,11);
-      }
-      ctx.fillStyle="#000";
-      ctx.beginPath();
-      ctx.moveTo(this.x+26,this.y+26);
-      ctx.lineTo(this.x+26,this.y+35);
-      ctx.lineTo(this.x+34,this.y+30);
-      ctx.fill();
     default:
       ctx.fillText(this.subtype.toUpperCase()+" : "+this.name,this.x+20,this.y+13);
-      ctx.fillRect(this.x+4,this.y+4,12,12);
-      ctx.fillStyle="#e84";
-      ctx.fillRect(this.x+5,this.y+5,10,10);
+      break;
     }
     for(var i=0;i<this.io.length;++i){
       this.io[i].Redraw(ctx,this.x,this.y);
+    }
+    for(var i in this.buttons){
+      this.buttons[i].Redraw(ctx,this.x,this.y);
     }
     for(var i=0;i<this.params.length;++i){
       var p=this.params[i];
@@ -797,15 +834,20 @@ function Node(graph,name,subtype,x,y){
       if(y>=this.y+p.y&&y<this.y+p.y+p.h)
         return p;
     }
-    if(x<this.x+20&&y<this.y+20){
-      return this.btn;
+//    if(x<this.x+20&&y<this.y+20){
+//      return this.btn;
+//    }
+    for(var i in this.buttons){
+      if(this.buttons[i].HitTest(x-this.x,y-this.y)){
+        return this.buttons[i];
+      }
     }
-    if((this.subtype=="osc"||this.subtype=="bufsrc") &&x>=this.x+20&&x<this.x+40&&y>=this.y+20&&y<this.y+40){
-      return this.playbtn;
-    }
-    if(this.subtype=="analys"&&y>=this.y+120){
-      return this.modebtn;
-    }
+//    if((this.subtype=="osc"||this.subtype=="bufsrc") &&x>=this.x+20&&x<this.x+40&&y>=this.y+20&&y<this.y+40){
+//      return this.playbtn;
+//    }
+//    if(this.subtype=="analys"&&y>=this.y+120){
+//      return this.modebtn;
+//    }
     return this;
   };
   this.Move=function(x,y){
@@ -838,6 +880,7 @@ function Graph(canvas,actx,dest){
   this.dest=dest;
   this.nodes=[new Node(this,"destination","destination",800,100)];
   this.playing=false;
+  this.strm=null;
   this.buffers=LoadBuffers(
     actx,
     {
@@ -879,7 +922,7 @@ function Graph(canvas,actx,dest){
     this.playing=false;
     for(var i=0;i<this.nodes.length;++i){
       var n=this.nodes[i];
-      if(n.playing){
+      if(n.buttons.play && n.buttons.play.press){
         this.playing=true;
         break;
       }
@@ -887,10 +930,12 @@ function Graph(canvas,actx,dest){
     if(this.playing){
       for(var i=0;i<this.nodes.length;++i){
         var n=this.nodes[i];
-        if(n.playing){
-          n.node.stop(0);
-//          n.node.disconnect();
-          n.playing=false;
+        if(n.buttons.play){
+          if(n.buttons.play.press){
+            if(n.node.stop)
+              n.node.stop(0);
+            n.buttons.play.press=false;
+          }
         }
       }
     }
@@ -898,10 +943,11 @@ function Graph(canvas,actx,dest){
       var t=audioctx.currentTime+0.05;
       for(var i=0;i<this.nodes.length;++i){
         var n=this.nodes[i];
-        if(n.subtype=="osc"||n.subtype=="bufsrc"){
+        if(n.buttons.play){
           n.RestartNode();
-          n.node.start(t);
-          n.playing=true;
+          if(n.node.start)
+            n.node.start(t);
+          n.buttons.play.press=true;
         }
       }
       this.ReConnect();
@@ -1021,7 +1067,7 @@ function Graph(canvas,actx,dest){
         node.node.disconnect();
         if(node.subtype=="split")
           node.node.disconnect(1);
-        if(node.subtype=="osc"&&node.playing)
+        if(node.buttons.play&&node.buttons.play.press)
           node.node.stop(0);
         if(node.subtype=="analys")
           clearInterval(node.timerid);
@@ -1173,33 +1219,49 @@ function MouseDown(e){
   mouseX=Math.floor(e.clientX-rc.left);
   mouseY=Math.floor(e.clientY-rc.top);
   var item=graph.HitTest(mouseX,mouseY);
-  if(item&&item.type=="play"){
-    if(item.parent.playing){
-      item.parent.playing=false;
-      item.parent.node.stop(0);
-    }
-    else{
-      if(item.parent.playing==false){
-        item.parent.RestartNode();
-        item.parent.graph.ReConnect();
+  if(item&&item.type=="btn"){
+    switch(item.name){
+    case "node":
+      var b=document.getElementById("popup");
+      b.style.display="block";
+      b.style.top=(item.parent.y+10)+"px";
+      b.style.left=(item.parent.x+10)+"px";
+      graph.focus=item.parent;
+      break;
+    case "play":
+      if(item.press){
+        item.press=false;
+        if(item.parent.node.stop)
+          item.parent.node.stop(0);
       }
-      item.parent.playing=true;
-      item.parent.node.start(0);
+      else{
+        if(item.press==false){
+          item.parent.RestartNode();
+          item.parent.graph.ReConnect();
+        }
+        item.press=true;
+        if(item.parent.node.start)
+          item.parent.node.start(0);
+      }
+      break;
+    case "mode":
+      item.press=!item.press;
+      break;
     }
     return;
   }
-  if(item&&item.type=="mode"){
-    item.parent.ToggleMode();
-    return;
-  }
-  if(item&&item.type=="btn"&&item.parent.subtype!="destination"){
-    var b=document.getElementById("popup");
-    b.style.display="block";
-    b.style.top=(item.parent.y+10)+"px";
-    b.style.left=(item.parent.x+10)+"px";
-    graph.focus=item.parent;
-    return;
-  }
+//  if(item&&item.type=="mode"){
+//    item.parent.ToggleMode();
+//    return;
+//  }
+//  if(item&&item.type=="btn"&&item.parent.subtype!="destination"){
+//    var b=document.getElementById("popup");
+//    b.style.display="block";
+//    b.style.top=(item.parent.y+10)+"px";
+//    b.style.left=(item.parent.x+10)+"px";
+//    graph.focus=item.parent;
+//    return;
+//  }
   dragging=item;
   if(dragging){
     draggingoffset={"x":mouseX-dragging.x,"y":mouseY-dragging.y};
