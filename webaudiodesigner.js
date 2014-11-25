@@ -722,12 +722,14 @@ function Node(graph,name,subtype,x,y){
   this.RestartNode=function(){
     switch(this.subtype){
     case "osc":
+      this.node.disconnect();
       this.node=this.graph.actx.createOscillator();
       this.node.type=this.params[0].value;
       this.node.frequency.value=this.params[1].value;
       this.node.detune.value=this.params[2].value;
       break;
     case "bufsrc":
+      this.node.disconnect();
       this.node=this.graph.actx.createBufferSource();
       this.node.playbackRate.value=this.params[0].value;
       this.node.loop=this.params[1].value;
@@ -737,7 +739,6 @@ function Node(graph,name,subtype,x,y){
       this.node.buffer=this.graph.buffers[this.params[4].value].data;
       break;
     }
-    this.graph.ReConnect();
   };
   this.Redraw=function(ctx){
     ctx.fillStyle="#000";
@@ -888,6 +889,7 @@ function Graph(canvas,actx,dest){
         var n=this.nodes[i];
         if(n.playing){
           n.node.stop(0);
+//          n.node.disconnect();
           n.playing=false;
         }
       }
@@ -902,6 +904,7 @@ function Graph(canvas,actx,dest){
           n.playing=true;
         }
       }
+      this.ReConnect();
     }
     this.Redraw();
   };
@@ -976,6 +979,12 @@ function Graph(canvas,actx,dest){
     }
   };
   this.ReConnect=function(){
+    for(var i=this.nodes.length-1;i>=1;--i){
+      var n=this.nodes[i];
+      n.node.disconnect();
+      if(n.subtype=="split")
+        n.node.disconnect(1);
+    }
     for(var i=0;i<this.nodes.length;++i){
       var n=this.nodes[i];
       for(var j=0;j<n.connect.length;++j){
@@ -1170,8 +1179,10 @@ function MouseDown(e){
       item.parent.node.stop(0);
     }
     else{
-      if(item.parent.playing==false)
+      if(item.parent.playing==false){
         item.parent.RestartNode();
+        item.parent.graph.ReConnect();
+      }
       item.parent.playing=true;
       item.parent.node.start(0);
     }
