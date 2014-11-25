@@ -1285,25 +1285,26 @@ function MenuClick(e){
   switch(e.target.id){
   case "playpgn":
   case "playbtn":
+    MenuClear();
     graph.Play();
     return;
   case "menugraphbtn":
-    document.getElementById("menunode").style.display="none";
-    document.getElementById("menuknob").style.display="none";
     var grp=document.getElementById("menugraph");
-    grp.style.display=(grp.style.display=="block")?"none":"block";
+    var c=grp.style.display;
+    MenuClear();
+    grp.style.display=(c=="block")?"none":"block";
     return;
   case "menunodebtn":
-    document.getElementById("menugraph").style.display="none";
-    document.getElementById("menuknob").style.display="none";
     var node=document.getElementById("menunode");
-    node.style.display=(node.style.display=="block")?"none":"block";
+    var c=node.style.display;
+    MenuClear();
+    node.style.display=(c=="block")?"none":"block";
     return;
   case "menuknobbtn":
-    document.getElementById("menunode").style.display="none";
-    document.getElementById("menugraph").style.display="none";
     var knob=document.getElementById("menuknob");
-    knob.style.display=(knob.style.display=="block")?"none":"block";
+    var c=knob.style.display;
+    MenuClear();
+    knob.style.display=(c=="block")?"none":"block";
     return;
   case "menuaboutbtn":
     graph.About();

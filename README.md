@@ -8,6 +8,32 @@ WebAudioAPI GUI design tool
 Available at :
 [https://g200kg.github.io/WebAudioDesigner](https://g200kg.github.io/WebAudioDesigner)
 
+## Usage
+#### Menu
+
+Menu                              |Description
+---                               |---
+Play                              |Start all OSC/BufferSource
+Graph - New Graph                 |Clear current graph
+Graph - Export as JavaScript file |Export as simple JavaScript code
+Graph - Link to this patch        |Display a URL that contain current patch
+Add Node - (Node type)            |Add specified node
+About                             |Display info
+
+#### Adding node
+Select from menu "Add Node".
+
+#### Deleting node
+Select node's pop-up menu "Delete" that will be appear when clicking node's upper left corner square.
+
+#### Make Connection
+* Drag "out" to "in" or parameters that has green semicircle.
+* Drag "in" or parameters that has green semicircle to "out".
+
+#### Delete Connection
+* Click connected "in", "out" or parameter's green semicircle, then select "Disconnection".
+* Click node's upper left corner square and select "Delete" menu. This will disconnect all connection from this node.
+
 ## Sample patch
 
 [Delay](http://g200kg.github.io/WebAudioDesigner/?p=%5B%7B%22type%22:%22destination%22,%22name%22:%22destination%22,%22x%22:694,%22y%22:116,%22params%22:%5B%5D,%22connect%22:%5B%5D%7D,%7B%22type%22:%22gain%22,%22name%22:%22gain1%22,%22x%22:572,%22y%22:199,%22params%22:%5B%7B%22name%22:%22gain%22,%22type%22:%22a%22,%22value%22:%221%22%7D%5D,%22connect%22:%5B%7B%22t%22:%22destination%22,%22o%22:0,%22i%22:0%7D%5D%7D,%7B%22type%22:%22bufsrc%22,%22name%22:%22bufsrc1%22,%22x%22:65,%22y%22:172,%22params%22:%5B%7B%22name%22:%22playbackRate%22,%22type%22:%22a%22,%22value%22:%221%22%7D,%7B%22name%22:%22loop%22,%22type%22:%22b%22,%22value%22:true%7D,%7B%22name%22:%22loopStart%22,%22type%22:%22n%22,%22value%22:0%7D,%7B%22name%22:%22loopEnd%22,%22type%22:%22n%22,%22value%22:0%7D,%7B%22name%22:%22buffer%22,%22type%22:%22ob%22,%22value%22:%22loop.wav%22%7D%5D,%22connect%22:%5B%7B%22t%22:%22delay1%22,%22o%22:0,%22i%22:0%7D,%7B%22t%22:%22gain1%22,%22o%22:0,%22i%22:0%7D%5D%7D,%7B%22type%22:%22delay%22,%22name%22:%22delay1%22,%22x%22:314,%22y%22:311,%22params%22:%5B%7B%22name%22:%22delayTime%22,%22type%22:%22a%22,%22value%22:%22.25%22%7D%5D,%22connect%22:%5B%7B%22t%22:%22gain2%22,%22o%22:0,%22i%22:0%7D,%7B%22t%22:%22gain3%22,%22o%22:0,%22i%22:0%7D%5D%7D,%7B%22type%22:%22gain%22,%22name%22:%22gain2%22,%22x%22:488,%22y%22:384,%22params%22:%5B%7B%22name%22:%22gain%22,%22type%22:%22a%22,%22value%22:%220.5%22%7D%5D,%22connect%22:%5B%7B%22t%22:%22gain1%22,%22o%22:0,%22i%22:0%7D%5D%7D,%7B%22type%22:%22gain%22,%22name%22:%22gain3%22,%22x%22:299,%22y%22:463,%22params%22:%5B%7B%22name%22:%22gain%22,%22type%22:%22a%22,%22value%22:%220.5%22%7D%5D,%22connect%22:%5B%7B%22t%22:%22delay1%22,%22o%22:0,%22i%22:0%7D%5D%7D%5D)
