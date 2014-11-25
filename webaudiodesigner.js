@@ -834,20 +834,11 @@ function Node(graph,name,subtype,x,y){
       if(y>=this.y+p.y&&y<this.y+p.y+p.h)
         return p;
     }
-//    if(x<this.x+20&&y<this.y+20){
-//      return this.btn;
-//    }
     for(var i in this.buttons){
       if(this.buttons[i].HitTest(x-this.x,y-this.y)){
         return this.buttons[i];
       }
     }
-//    if((this.subtype=="osc"||this.subtype=="bufsrc") &&x>=this.x+20&&x<this.x+40&&y>=this.y+20&&y<this.y+40){
-//      return this.playbtn;
-//    }
-//    if(this.subtype=="analys"&&y>=this.y+120){
-//      return this.modebtn;
-//    }
     return this;
   };
   this.Move=function(x,y){
@@ -1250,18 +1241,6 @@ function MouseDown(e){
     }
     return;
   }
-//  if(item&&item.type=="mode"){
-//    item.parent.ToggleMode();
-//    return;
-//  }
-//  if(item&&item.type=="btn"&&item.parent.subtype!="destination"){
-//    var b=document.getElementById("popup");
-//    b.style.display="block";
-//    b.style.top=(item.parent.y+10)+"px";
-//    b.style.left=(item.parent.x+10)+"px";
-//    graph.focus=item.parent;
-//    return;
-//  }
   dragging=item;
   if(dragging){
     draggingoffset={"x":mouseX-dragging.x,"y":mouseY-dragging.y};
