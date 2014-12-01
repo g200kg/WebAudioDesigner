@@ -255,97 +255,242 @@ function ExportJs(json){
   link.setAttribute("href",bURL);
   link.setAttribute("download","WebAudiodesigner.html")
 }
+function ToFixed(n){
+  n=n.toFixed(3);
+  for(var i=n.length-1;i>0;--i){
+    if(n[i]!="0")
+      break;
+  }
+  if(n[i]==".")
+    --i;
+  n=n.substring(0,i+1);
+  return n;
+}
+function Widget(){
+  this.child=[];
+}
+Widget.prototype.GetNode=function(t){
+  while(t&&t.type!="node")
+    t=t.parent;
+  return t;
+};
+Widget.prototype.GetPos=function(){
+  var pos={x:this.x,y:this.y};
+  for(var p=this.parent;p;p=p.parent){
+    pos.x+=p.x,pos.y+=p.y;
+  }
+  return pos;
+};
+Widget.prototype.HitTest=function(x,y){
+  for(var i=this.child.length-1;i>=0;--i){
+    var h=this.child[i].HitTest(x,y);
+    if(h)
+      return h;
+  }
+  var pos=this.GetPos();
+  if(x>=pos.x&&x<pos.x+this.w&&y>=pos.y&&y<pos.y+this.h){
+    return this;
+  }
+  return null;
+};
+Widget.prototype.Del=function(w){
+  for(var i=this.child.length-1;i>=0;--i)
+    if(this.child[i]===w)
+      this.child.splice(i,1);
+};
+function Connector(parent,subtype,dir,x,y){
+  this.type="conn",this.subtype=subtype,this.dir=dir,this.x=x-10,this.y=y-10,this.w=20,this.h=20,this.parent=parent;
+  parent.child.push(this);
+  this.Redraw=function(ctx){
+    if(subtype=="sig")
+      ctx.fillStyle="#6c6";
+    else
+      ctx.fillStyle="#ccf";
+    ctx.beginPath();
+    var pos=this.GetPos();
+    ctx.arc(pos.x+10,pos.y+10,7,0,6.29);
+    ctx.fill();
+  };
+}
+Connector.prototype=new Widget();
+
+function KnobParam(parent,x,y,w,h){
+  this.x=x,this.y=y,this.w=w,this.h=h;
+  this.parent=parent;
+  this.type="knobparam";
+  this.subtype="";
+}
+KnobParam.prototype=new Widget();
+KnobParam.prototype.Edit=function(){
+  graph.inputfocus=this;
+  graph.text.onchange=function(e){
+    this.Set(e.target.value);
+  }.bind(this);
+  graph.Redraw();
+};
+KnobParam.prototype.Set=function(s){
+  var v=eval("({"+s.replace(/\n/g,",")+"})");
+  this.parent.min=v.min;
+  this.parent.max=v.max;
+  this.parent.step=v.step;
+  this.parent.value=v.value;
+  this.parent.UpdateKnob();
+  graph.Redraw();
+}
+KnobParam.prototype.Redraw=function(ctx){
+  var p=this.GetPos();
+  ctx.fillStyle="#000";
+  ctx.fillText("min:"+this.parent.min,p.x+5,p.y+14);
+  ctx.fillText("max:"+this.parent.max,p.x+5,p.y+26);
+  ctx.fillText("step:"+this.parent.step,p.x+5,p.y+38);
+  ctx.fillText("value:"+this.parent.value,p.x+5,p.y+50);
+  if(graph.inputfocus==this){
+    graph.text.value="min:"+this.parent.min+"\nmax:"+this.parent.max+"\nstep:"+this.parent.step+"\nvalue:"+this.parent.value;
+    graph.text.style.left=(p.x)+"px";
+    graph.text.style.top=(p.y)+"px";
+    graph.text.style.width=this.w+"px";
+    graph.text.style.height=this.h+"px";
+    graph.text.style.display="block";
+    graph.input.style.display="none";
+    graph.select.style.display="none";
+  }
+};
+function Knob(parent,name,x,y,min,max,step,value){
+  this.x=x,this.y=y,this.w=70,this.h=64+20*3,this.name=name,this.min=min,this.max=max,this.step=step,this.value=value;
+  this.elem=document.createElement("div");
+  this.elem.setAttribute("class","knobpane");
+  this.elem.style.left=(x+16)+"px";
+  this.elem.style.top=(y+64)+"px";
+  document.getElementById("base").insertBefore(this.elem,document.getElementById("knobend"));
+  this.elem.knob=this;
+  this.parent=parent;
+  this.type="knob";
+  this.connect=[];
+  this.child=[new KnobParam(this,0,0,70,56)];
+  this.connector=[new Connector(this.child[0],"knob","u",32,0)];
+  this.buttons={"node":new Button("node",this,3,this.h-17,14,14)};
+  parent.child.push(this);
+  this.UpdateKnob();
+}
+Knob.prototype=new Widget();
+Knob.prototype.Redraw=function(ctx){
+  this.connector[0].Redraw(ctx);
+  ctx.fillStyle="#000";
+  ctx.fillRect(this.x,this.y,this.w,this.h);
+  ctx.fillStyle="#abf";
+  ctx.fillRect(this.x+1,this.y+1,68,54);
+  ctx.fillStyle="#aaa";
+  ctx.fillRect(this.x+1,this.y+56,this.w-2,this.h-57-20);
+  var g=ctx.createLinearGradient(this.x,this.y+this.h-20,this.x,this.y+this.h);
+  g.addColorStop(0,"#dfa");
+  g.addColorStop(1,"#bc7");
+  ctx.fillStyle=g;
+  ctx.fillRect(this.x+1,this.y+this.h-19,this.w-2,18);
+  ctx.fillStyle="#000";
+  ctx.fillText(this.name,this.x+20,this.y+this.h-7);
+  this.buttons["node"].Redraw(ctx,this.x,this.y);
+  this.child[0].Redraw(ctx);
+};
+Knob.prototype.Move=function(x,y){
+  this.x=x,this.y=y;
+  this.elem.style.left=(this.x+16)+"px";
+  this.elem.style.top=(this.y+64)+"px";
+};
+Knob.prototype.Connect=function(target){
+  for(var i=this.connect.length-1;i>=0;--i)
+    if(this.connect[i].t==target)
+      return;
+  this.connect.push({t:target});
+};
+Knob.prototype.UpdateKnob=function(){
+  this.elem.innerHTML="<webaudio-knob diameter='32' valuetip='1' min="+this.min
+    +" max="+this.max
+    +" step="+this.step
+    +" value="+this.value
+    +" style='position:absolute;top:0px;left:0px'></webaudio-knob>";
+}
 function Button(name,parent,x,y,w,h){
   this.name=name;
   this.parent=parent;
+  parent.child.push(this);
   this.x=x,this.y=y,this.w=w,this.h=h;
   this.type="btn";
   this.press=false;
-  this.Redraw=function(ctx,bx,by){
-    var x=bx+this.x;
-    var y=by+this.y;
-    ctx.fillStyle="#000";
-    ctx.fillRect(x,y,this.w,this.h);
-    if(this.press)
-      ctx.fillStyle="#888";
-    else
-      ctx.fillStyle="#ccc";
-    ctx.fillRect(x+1,y+1,this.w-2,this.h-2);
-    ctx.fillStyle="#000";
-    switch(this.name){
-    case "node":
-      ctx.fillStyle="#e84";
-      ctx.fillRect(x+2,y+2,this.w-4,this.h-4);
-      break;
-    case "play":
-      ctx.beginPath();
-      ctx.moveTo(x+this.w*.25,y+this.h*.2);
-      ctx.lineTo(x+this.w*.75,y+this.h*.5);
-      ctx.lineTo(x+this.w*.25,y+this.h*.8);
-      ctx.fill();
-      break;
-    case "mode":
-      if(this.press)
-        ctx.fillText("Time",x+18,y+10);
-      else
-        ctx.fillText("Freq",x+18,y+10);
-      break;
-    }
-  };
-  this.HitTest=function(x,y){
-    if(x>=this.x&&x<this.x+this.w&&y>=this.y&&y<this.y+this.h)
-      return this;
-    return null;
-  };
 }
+Button.prototype=new Widget();
+Button.prototype.Redraw=function(ctx,bx,by){
+  var x=bx+this.x;
+  var y=by+this.y;
+  ctx.fillStyle="#000";
+  ctx.fillRect(x,y,this.w,this.h);
+  if(this.press)
+    ctx.fillStyle="#888";
+  else
+    ctx.fillStyle="#ccc";
+  ctx.fillRect(x+1,y+1,this.w-2,this.h-2);
+  ctx.fillStyle="#000";
+  switch(this.name){
+  case "node":
+    ctx.fillStyle="#e84";
+    ctx.fillRect(x+2,y+2,this.w-4,this.h-4);
+    break;
+  case "play":
+    ctx.beginPath();
+    ctx.moveTo(x+this.w*.25,y+this.h*.2);
+    ctx.lineTo(x+this.w*.75,y+this.h*.5);
+    ctx.lineTo(x+this.w*.25,y+this.h*.8);
+    ctx.fill();
+    break;
+  case "mode":
+    if(this.press)
+      ctx.fillText("Time",x+18,y+10);
+    else
+      ctx.fillText("Freq",x+18,y+10);
+    break;
+  }
+};
+
 function Io(name,parent,x,y,n){
   this.name=name;
   this.parent=parent;
+  parent.child.push(this);
   this.x=x,this.y=y,this.w=50,this.h=20;
   this.n=n;
   this.type="io";
+  if(name=="in")
+    this.child=[new Connector(this,"sig","l",0,10)];
+  else
+    this.child=[new Connector(this,"sig","o",this.w,10)];
   this.subtype=(name=="in")?"in":"out";
-  this.Redraw=function(ctx,bx,by){
-    ctx.beginPath();
-    if(this.subtype=="in")
-      ctx.arc(bx+this.x,by+this.y+10,5,0,6);
-    else
-      ctx.arc(bx+this.x+50,by+this.y+10,5,0,6);
-    ctx.fillStyle="#8d9";
-    ctx.fill();
-    ctx.fillStyle="#000";
-    ctx.fillRect(bx+this.x,by+this.y,this.w,this.h+1);
-    ctx.fillStyle="#abf";
-    ctx.fillRect(bx+this.x+1,by+this.y+1,this.w-2,this.h-1);
-    ctx.fillStyle="#000";
-    ctx.fillText(this.name,bx+this.x+4,by+this.y+13);
-  };
-  this.Edit=function(){
-    var name=(this.type=="param")?this.parent.name+"."+this.name:this.parent.name;
-    for(var i=0;i<graph.nodes.length;++i){
-      var n=graph.nodes[i];
-      for(var j=0;j<n.connect.length;++j){
-        var c=n.connect[j];
-      }
-    }
-  }
 }
-function Param(x,y,w,h,tx,ty,subtype,option,name,parent){
+Io.prototype=new Widget();
+Io.prototype.Redraw=function(ctx,bx,by){
+  this.child[0].Redraw(ctx);
+  ctx.fillStyle="#000";
+  ctx.fillRect(bx+this.x,by+this.y,this.w,this.h+1);
+  ctx.fillStyle="#abf";
+  ctx.fillRect(bx+this.x+1,by+this.y+1,this.w-2,this.h-1);
+  ctx.fillStyle="#000";
+  ctx.fillText(this.name,bx+this.x+4,by+this.y+13);
+};
+
+function Param(parent,x,y,w,h,tx,ty,subtype,option,name){
   this.x=x,this.y=y,this.w=w,this.h=h,this.tx=tx,this.ty=ty;
   this.name=name;
   this.parent=parent;
+  parent.child.push(this);
+  this.child=[];
   this.subtype=subtype;
   this.option=option;
+  if(subtype=="a")
+    this.connector=[new Connector(this,"sig","l",0,10),new Connector(this,"knob","r",this.w,10)];
+  else if(subtype=="n")
+    this.connector=[new Connector(this,"knob","r",this.w,10)];
+  else
+    this.connector=[];
   switch(subtype){
   case "a":
-    this.value=parent.node[name].value.toFixed(3);
-    for(var i=this.value.length-1;i>0;--i){
-      if(this.value[i]!="0")
-        break;
-    }
-    if(this.value[i]==".")
-      --i;
-    this.value=this.value.substring(0,i+1);
+    this.value=ToFixed(this.parent.node[name].value);
     break;
   case "s":
   case "n":
@@ -362,177 +507,176 @@ function Param(x,y,w,h,tx,ty,subtype,option,name,parent){
     break;
   case "ob":
     this.value=option[0];
-    this.parent.node[name]=this.parent.graph.buffers[this.value].data;
+    this.parent.node[name]=this.parent.parent.buffers[this.value].data;
     break;
   }
   this.bx=this.by=0;
   this.type="param";
-  this.Set=function(value){
-    switch(this.subtype){
-    case "a":
-      this.value=value;
-      this.parent.node[this.name].value=value;
-      break;
-    case "n":
-    case "s":
-    case "b":
-      this.value=value;
-      this.parent.node[this.name]=value;
-      break;
-    case "tc":
-      this.value=value;
-      this.parent.node[this.name]=eval(this.value);
-      break;
-    case "ts":
-      this.value=value;
-      this.parent.node[this.name]=eval("("+value+")");
-      break;
-    case "ob":
-      this.value=value;
-      this.parent.node[this.name]=this.parent.graph.buffers[this.value].data;
-      break;
-    }
-    graph.Redraw();
-  };
-  this.Redraw=function(ctx,bx,by){
-    ctx.fillStyle="#000";
-    if(this.subtype=="a"){
-      ctx.fillStyle="#8d9";
-      ctx.beginPath();
-      ctx.arc(bx+this.x,by+this.y+10,5,0,6);
-      ctx.fill();
-    }
-    ctx.fillStyle="#000";
-    ctx.fillRect(bx+this.x,by+this.y,this.w,this.h);
-    var g=ctx.createLinearGradient(0,by+this.y,0,by+this.y+this.h);
-    g.addColorStop(0,"#eef");
-    g.addColorStop(1,"#bbc");
-    ctx.fillStyle=g;
-    ctx.fillRect(bx+this.x+1,by+this.y+1,this.w-2,this.h-1);
-    ctx.fillStyle="#000";
-    ctx.fillText(this.name,bx+this.x+4,by+this.y+14);
-    switch(this.subtype){
-    case "tc":
-      var c=this.parent.node.curve;
-      ctx.strokeStyle="#8e8";
-      ctx.fillStyle="#335";
-      ctx.fillRect(bx+this.x+60,by+this.y+40-32,64,64);
-      ctx.beginPath();
-      ctx.moveTo(bx+this.x+60,by+this.y+40-c[0]*32);
-      for(var i=0;i<c.length;++i){
-        ctx.lineTo(bx+this.x+(i/(c.length-1))*64+60,by+this.y+40-c[i]*32);
-      }
-      ctx.stroke();
-      break;
-    case "ts":
-      ctx.fillText(" = function(){...}",bx+this.x+4,by+this.y+14+20);
-      break;
-    case "ob":
-      ctx.fillText(this.value,bx+this.x+this.tx,by+this.y+14+this.ty);
-      break;
-    default:
-      ctx.fillText(this.value,bx+this.x+this.tx,by+this.y+14);
-      break;
-    }
-    if(bx!=this.bx||by!=this.by)
-      this.bx=bx,this.by=by;
-    if(graph.inputfocus==this){
-      switch(this.subtype){
-      case "a":
-      case "n":
-        graph.input.style.left=(this.parent.x+this.x+this.tx)+"px";
-        graph.input.style.top=(this.parent.y+this.y)+"px";
-        graph.input.style.width=(this.parent.w-this.tx-5)+"px";
-        graph.input.style.height="15px";
-        graph.input.style.display="block";
-        graph.text.style.display="none";
-        graph.select.style.display="none";
-        break;
-      case "tc":
-      case "ts":
-        graph.text.style.left=(this.parent.x+this.x)+"px";
-        graph.text.style.top=(this.parent.y+this.y)+"px";
-        graph.text.style.width=this.tx+"px";
-        graph.text.style.height=this.ty+"px";
-        graph.text.style.display="block";
-        graph.input.style.display="none";
-        graph.select.style.display="none";
-        break;
-      case "s":
-      case "b":
-      case "ob":
-        graph.select.style.left=(this.parent.x+this.x+this.tx)+"px";
-        graph.select.style.top=(this.parent.y+this.y+this.ty+1)+"px";
-        graph.select.style.width=(this.parent.w-this.tx)+"px";
-        graph.select.style.height="19px";
-        graph.select.style.display="block";
-        graph.input.style.display="none";
-        graph.text.style.display="none";
-        break;
-      }
-    }
-  };
-  this.Edit=function(){
-    switch(this.subtype){
-    case "s":
-    case "ob":
-      while(graph.select.childNodes.length)
-        graph.select.removeChild(graph.select.childNodes[0]);
-      for(i in this.option){
-        var e=document.createElement("option");
-        e.innerHTML=this.option[i];
-        if(this.value==this.option[i])
-          e.setAttribute("selected",1);
-        graph.select.appendChild(e);
-      }
-      graph.select.onchange=function(e){
-        this.Set(e.target.value);
-        graph.Redraw();
-      }.bind(this);
-      graph.inputfocus=this;
-      graph.Redraw();
-      graph.select.focus();
-      return;
-    case "b":
-      this.Set(!this.value);
-      graph.Redraw();
-      return;
-    case "a":
-      graph.input.value=this.value;
-      graph.input.onchange=function(e){
-        this.Set(e.target.value);
-      }.bind(this);
-      graph.inputfocus=this;
-      graph.Redraw();
-      graph.input.focus();
-      return;
-    case "n":
-      graph.input.value=this.value;
-      graph.input.onchange=function(e){
-        this.Set(e.target.value);
-      }.bind(this);
-      graph.inputfocus=this;
-      graph.Redraw();
-      graph.input.focus();
-      return;
-    case "tc":
-    case "ts":
-      graph.text.value=this.value;
-      graph.text.onchange=function(e){
-        this.Set(e.target.value);
-      }.bind(this);
-      graph.inputfocus=this;
-      graph.Redraw();
-      graph.text.focus();
-      return;
-    }
-  };
 }
-function Node(graph,name,subtype,x,y){
-  this.graph=graph;
-  var actx=graph.actx;
+Param.prototype=new Widget();
+Param.prototype.Set=function(value){
+  switch(this.subtype){
+  case "a":
+    this.value=value;
+    this.parent.node[this.name].value=value;
+    break;
+  case "n":
+  case "s":
+  case "b":
+    this.value=value;
+    this.parent.node[this.name]=value;
+    break;
+  case "tc":
+    this.value=value;
+    this.parent.node[this.name]=eval(this.value);
+    break;
+  case "ts":
+    this.value=value;
+    this.parent.node[this.name]=eval("("+value+")");
+    break;
+  case "ob":
+    this.value=value;
+    this.parent.node[this.name]=this.parent.parent.buffers[this.value].data;
+    break;
+  }
+  graph.Redraw();
+};
+Param.prototype.Redraw=function(ctx,bx,by){
+  for(var i=0;i<this.connector.length;++i)
+    this.connector[i].Redraw(ctx);
+  ctx.fillStyle="#000";
+  ctx.fillRect(bx+this.x,by+this.y,this.w,this.h);
+  var g=ctx.createLinearGradient(0,by+this.y,0,by+this.y+this.h);
+  g.addColorStop(0,"#eef");
+  g.addColorStop(1,"#bbc");
+  ctx.fillStyle=g;
+  ctx.fillRect(bx+this.x+1,by+this.y+1,this.w-2,this.h-1);
+  ctx.fillStyle="#000";
+  ctx.fillText(this.name,bx+this.x+4,by+this.y+14);
+  switch(this.subtype){
+  case "tc":
+    var c=this.parent.node.curve;
+    ctx.strokeStyle="#8e8";
+    ctx.fillStyle="#335";
+    ctx.fillRect(bx+this.x+60,by+this.y+40-32,64,64);
+    ctx.beginPath();
+    ctx.moveTo(bx+this.x+60,by+this.y+40-c[0]*32);
+    for(var i=0;i<c.length;++i){
+      ctx.lineTo(bx+this.x+(i/(c.length-1))*64+60,by+this.y+40-c[i]*32);
+    }
+    ctx.stroke();
+    break;
+  case "ts":
+    ctx.fillText(" = function(){...}",bx+this.x+4,by+this.y+14+20);
+    break;
+  case "ob":
+    ctx.fillText(this.value,bx+this.x+this.tx,by+this.y+14+this.ty);
+    break;
+  default:
+    ctx.fillText(this.value,bx+this.x+this.tx,by+this.y+14);
+    break;
+  }
+  if(bx!=this.bx||by!=this.by)
+    this.bx=bx,this.by=by;
+  if(graph.inputfocus==this){
+    switch(this.subtype){
+    case "a":
+    case "n":
+      graph.input.style.left=(this.parent.x+this.x+this.tx)+"px";
+      graph.input.style.top=(this.parent.y+this.y)+"px";
+      graph.input.style.width=(this.parent.w-this.tx-5)+"px";
+      graph.input.style.height="15px";
+      graph.input.style.display="block";
+      graph.text.style.display="none";
+      graph.select.style.display="none";
+      break;
+    case "tc":
+    case "ts":
+      graph.text.style.left=(this.parent.x+this.x)+"px";
+      graph.text.style.top=(this.parent.y+this.y)+"px";
+      graph.text.style.width=this.tx+"px";
+      graph.text.style.height=this.ty+"px";
+      graph.text.style.display="block";
+      graph.input.style.display="none";
+      graph.select.style.display="none";
+      break;
+    case "s":
+    case "b":
+    case "ob":
+      graph.select.style.left=(this.parent.x+this.x+this.tx)+"px";
+      graph.select.style.top=(this.parent.y+this.y+this.ty+1)+"px";
+      graph.select.style.width=(this.parent.w-this.tx)+"px";
+      graph.select.style.height="19px";
+      graph.select.style.display="block";
+      graph.input.style.display="none";
+      graph.text.style.display="none";
+      break;
+    }
+  }
+};
+Param.prototype.Edit=function(){
+  switch(this.subtype){
+  case "s":
+  case "ob":
+    while(graph.select.childNodes.length)
+      graph.select.removeChild(graph.select.childNodes[0]);
+    for(i in this.option){
+      var e=document.createElement("option");
+      e.innerHTML=this.option[i];
+      if(this.value==this.option[i])
+        e.setAttribute("selected",1);
+      graph.select.appendChild(e);
+    }
+    graph.select.onchange=function(e){
+      this.Set(e.target.value);
+      graph.Redraw();
+    }.bind(this);
+    graph.inputfocus=this;
+    graph.Redraw();
+    graph.select.focus();
+    return;
+  case "b":
+    this.Set(!this.value);
+    graph.Redraw();
+    return;
+  case "a":
+    graph.input.value=this.value;
+    graph.input.onchange=function(e){
+      this.Set(e.target.value);
+    }.bind(this);
+    graph.inputfocus=this;
+    graph.Redraw();
+    graph.input.focus();
+    return;
+  case "n":
+    graph.input.value=this.value;
+    graph.input.onchange=function(e){
+      this.Set(e.target.value);
+    }.bind(this);
+    graph.inputfocus=this;
+    graph.Redraw();
+    graph.input.focus();
+    return;
+  case "tc":
+  case "ts":
+    graph.text.value=this.value;
+    graph.text.onchange=function(e){
+      this.Set(e.target.value);
+    }.bind(this);
+    graph.inputfocus=this;
+    graph.Redraw();
+    graph.text.focus();
+    return;
+  }
+};
+
+function ANode(parent,name,subtype,x,y){
+  this.parent=parent;
+  this.child=[];
+  var actx=parent.actx;
   this.name=name,this.x=x,this.y=y,this.w=101;
   this.connect=[];
+  parent.child.push(this);
   this.type="node";
   this.subtype=subtype;
   switch(subtype){
@@ -604,11 +748,11 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("out",this,this.w-50,20,0)];
     this.node=actx.createBufferSource();
     this.params=[
-      new Param(0,40,this.w,20,90,0,"a",null,"playbackRate",this),
-      new Param(0,60,this.w,20,90,0,"b",null,"loop",this),
-      new Param(0,80,this.w,20,90,0,"n",null,"loopStart",this),
-      new Param(0,100,this.w,20,90,0,"n",null,"loopEnd",this),
-      new Param(0,120,this.w,20,60,0,"ob",["loop.wav","rhythm.wav","voice.mp3","snare.wav"],"buffer",this),
+      new Param(this,0,40,this.w,20,90,0,"a",null,"playbackRate"),
+      new Param(this,0,60,this.w,20,90,0,"b",null,"loop"),
+      new Param(this,0,80,this.w,20,90,0,"n",null,"loopStart"),
+      new Param(this,0,100,this.w,20,90,0,"n",null,"loopEnd"),
+      new Param(this,0,120,this.w,20,60,0,"ob",["loop.wav","rhythm.wav","voice.mp3","snare.wav"],"buffer"),
     ]
     this.buttons={"play":new Button("play",this,20,24,20,14),"node":new Button("node",this,3,3,14,14)};
     break;
@@ -619,9 +763,9 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("out",this,this.w-50,20,0)];
     this.node=actx.createOscillator();
     this.params=[
-      new Param(0,40,this.w,20,70,0,"s",["sine","square","sawtooth","triangle"],"type",this),
-      new Param(0,60,this.w,20,70,0,"a",null,"frequency",this),
-      new Param(0,80,this.w,20,70,0,"a",null,"detune",this)];
+      new Param(this,0,40,this.w,20,70,0,"s",["sine","square","sawtooth","triangle"],"type"),
+      new Param(this,0,60,this.w,20,70,0,"a",null,"frequency"),
+      new Param(this,0,80,this.w,20,70,0,"a",null,"detune")];
     this.buttons={"play":new Button("play",this,20,24,20,14),"node":new Button("node",this,3,3,14,14)};
     break;
   case "gain":
@@ -630,7 +774,7 @@ function Node(graph,name,subtype,x,y){
     this.w=110;
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createGain();
-    this.params=[new Param(0,40,this.w,20,60,0,"a",null,"gain",this)];
+    this.params=[new Param(this,0,40,this.w,20,60,0,"a",null,"gain")];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "filt":
@@ -640,11 +784,11 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createBiquadFilter();
     this.params=[
-      new Param(0,40,this.w,20,60,0,"s",["lowpass","highpass","bandpass","lowshelf","highshelf","peaking","notch","allpass"],"type",this),
-      new Param(0,60,this.w,20,80,0,"a",null,"frequency",this),
-      new Param(0,80,this.w,20,80,0,"a",null,"detune",this),
-      new Param(0,100,this.w,20,80,0,"a",null,"Q",this),
-      new Param(0,120,this.w,20,80,0,"a",null,"gain",this)
+      new Param(this,0,40,this.w,20,60,0,"s",["lowpass","highpass","bandpass","lowshelf","highshelf","peaking","notch","allpass"],"type"),
+      new Param(this,0,60,this.w,20,80,0,"a",null,"frequency"),
+      new Param(this,0,80,this.w,20,80,0,"a",null,"detune"),
+      new Param(this,0,100,this.w,20,80,0,"a",null,"Q"),
+      new Param(this,0,120,this.w,20,80,0,"a",null,"gain")
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -655,11 +799,11 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createDynamicsCompressor();
     this.params=[
-      new Param(0,40,this.w,20,70,0,"a",null,"threshold",this),
-      new Param(0,60,this.w,20,70,0,"a",null,"knee",this),
-      new Param(0,80,this.w,20,70,0,"a",null,"ratio",this),
-      new Param(0,100,this.w,20,70,0,"a",null,"attack",this),
-      new Param(0,120,this.w,20,70,0,"a",null,"release",this),
+      new Param(this,0,40,this.w,20,70,0,"a",null,"threshold"),
+      new Param(this,0,60,this.w,20,70,0,"a",null,"knee"),
+      new Param(this,0,80,this.w,20,70,0,"a",null,"ratio"),
+      new Param(this,0,100,this.w,20,70,0,"a",null,"attack"),
+      new Param(this,0,120,this.w,20,70,0,"a",null,"release"),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -669,7 +813,7 @@ function Node(graph,name,subtype,x,y){
     this.w=120;
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createDelay();
-    this.params=[new Param(0,40,this.w,20,70,0,"a",null,"delayTime",this)];
+    this.params=[new Param(this,0,40,this.w,20,70,0,"a",null,"delayTime")];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "panner":
@@ -679,14 +823,14 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createPanner();
     this.params=[
-      new Param(0,40,this.w,20,95,0,"s",["equalpower","HRTF"],"panningModel",this),
-      new Param(0,60,this.w,20,95,0,"s",["linear","inverse","exponential"],"distanceModel",this),
-      new Param(0,80,this.w,20,110,0,"n",null,"refDistance",this),
-      new Param(0,100,this.w,20,110,0,"n",null,"maxDistance",this),
-      new Param(0,120,this.w,20,110,0,"n",null,"rolloffFactor",this),
-      new Param(0,140,this.w,20,110,0,"n",null,"coneInnerAngle",this),
-      new Param(0,160,this.w,20,110,0,"n",null,"coneOuterAngle",this),
-      new Param(0,180,this.w,20,110,0,"n",null,"coneOuterGain",this)
+      new Param(this,0,40,this.w,20,95,0,"s",["equalpower","HRTF"],"panningModel"),
+      new Param(this,0,60,this.w,20,95,0,"s",["linear","inverse","exponential"],"distanceModel"),
+      new Param(this,0,80,this.w,20,110,0,"n",null,"refDistance"),
+      new Param(this,0,100,this.w,20,110,0,"n",null,"maxDistance"),
+      new Param(this,0,120,this.w,20,110,0,"n",null,"rolloffFactor"),
+      new Param(this,0,140,this.w,20,110,0,"n",null,"coneInnerAngle"),
+      new Param(this,0,160,this.w,20,110,0,"n",null,"coneOuterAngle"),
+      new Param(this,0,180,this.w,20,110,0,"n",null,"coneOuterGain")
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -697,10 +841,10 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createAnalyser();
     this.params=[
-      new Param(0,40,this.w,20,150,0,"n",null,"fftSize",this),
-      new Param(0,60,this.w,20,150,0,"n",null,"minDecibels",this),
-      new Param(0,80,this.w,20,150,0,"n",null,"maxDecibels",this),
-      new Param(0,100,this.w,20,150,0,"n",null,"smoothingTimeConstant",this)
+      new Param(this,0,40,this.w,20,150,0,"n",null,"fftSize"),
+      new Param(this,0,60,this.w,20,150,0,"n",null,"minDecibels"),
+      new Param(this,0,80,this.w,20,150,0,"n",null,"maxDecibels"),
+      new Param(this,0,100,this.w,20,150,0,"n",null,"smoothingTimeConstant")
     ];
     this.buttons={"mode":new Button("mode",this,60,24,65,14),"node":new Button("node",this,3,3,14,14)};
     this.buf=new Uint8Array(185);
@@ -717,11 +861,11 @@ function Node(graph,name,subtype,x,y){
         graph.ctx.fillRect(this.x+i,this.y+180,1,-v);
       }
       var i;
-      for(i=0;i<graph.nodes.length;++i)
-        if(graph.nodes[i]==this)
+      for(i=0;i<graph.child.length;++i)
+        if(graph.child[i]==this)
           break;
-      for(++i;i<graph.nodes.length;++i){
-        graph.nodes[i].Redraw(this.graph.ctx);
+      for(++i;i<graph.child.length;++i){
+        graph.child[i].Redraw(this.parent.ctx);
       }
     };
     this.timerid=setInterval(this.timerfunc.bind(this),200);
@@ -733,8 +877,8 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createWaveShaper();
     this.params=[
-      new Param(0,40,this.w,20,80,0,"s",["none","2x","4x"],"oversample",this),
-      new Param(0,60,this.w,80,170,120,"tc","new Float32Array([\n-0.5,-0.5,0,0.5,0.5\n])","curve",this),
+      new Param(this,0,40,this.w,20,80,0,"s",["none","2x","4x"],"oversample"),
+      new Param(this,0,60,this.w,80,170,120,"tc","new Float32Array([\n-0.5,-0.5,0,0.5,0.5\n])","curve"),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -745,8 +889,8 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createConvolver();
     this.params=[
-      new Param(0,40,this.w,20,70,0,"b",null,"normalize",this),
-      new Param(0,60,this.w,40,4,20,"ob",["Five Columns Long.wav","French 18th Century Salon.wav","Narrow Bumpy Space.wav"],"buffer",this),
+      new Param(this,0,40,this.w,20,70,0,"b",null,"normalize"),
+      new Param(this,0,60,this.w,40,4,20,"ob",["Five Columns Long.wav","French 18th Century Salon.wav","Narrow Bumpy Space.wav"],"buffer"),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -757,7 +901,7 @@ function Node(graph,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createScriptProcessor();
     this.params=[
-      new Param(0,40,this.w,40,280,180,"ts",
+      new Param(this,0,40,this.w,40,280,180,"ts",
         "function(ev){\n"+
         "  var out0=ev.outputBuffer.getChannelData(0);\n"+
         "  var out1=ev.outputBuffer.getChannelData(1);\n"+
@@ -767,7 +911,7 @@ function Node(graph,name,subtype,x,y){
         "    out0[i]=in0[i];\n"+
         "    out1[i]=in1[i];\n"+
         "  }\n"+
-        "}","onaudioprocess",this),
+        "}","onaudioprocess"),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -776,92 +920,79 @@ function Node(graph,name,subtype,x,y){
     switch(this.subtype){
     case "osc":
       this.node.disconnect();
-      this.node=this.graph.actx.createOscillator();
+      this.node=this.parent.actx.createOscillator();
       this.node.type=this.params[0].value;
       this.node.frequency.value=this.params[1].value;
       this.node.detune.value=this.params[2].value;
       break;
     case "bufsrc":
       this.node.disconnect();
-      this.node=this.graph.actx.createBufferSource();
+      this.node=this.parent.actx.createBufferSource();
       this.node.playbackRate.value=this.params[0].value;
       this.node.loop=this.params[1].value;
       this.node.loopStart=this.params[2].value;
       this.node.loopEnd=this.params[3].value;
       this.node.onended=function(){this.buttons.play.press=false;graph.Redraw()}.bind(this);
-      this.node.buffer=this.graph.buffers[this.params[4].value].data;
+      this.node.buffer=this.parent.buffers[this.params[4].value].data;
       break;
     }
-  };
-  this.Redraw=function(ctx){
-    ctx.fillStyle="#000";
-    ctx.fillRect(this.x,this.y,this.w,this.h);
-    var g=ctx.createLinearGradient(this.x,this.y,this.x,this.y+20);
-    g.addColorStop(0,"#dfa");
-    g.addColorStop(1,"#bc7");
-    ctx.fillStyle=g;
-    ctx.fillRect(this.x+1,this.y+1,this.w-2,20-2);
-    ctx.fillStyle="#abf";
-    ctx.fillRect(this.x+1,this.y+21,this.w-2,this.ioh-1);
-    ctx.fillStyle="#000";
-    switch(this.subtype){
-    case "destination":
-      ctx.fillText("DESTINATION",this.x+20,this.y+13);
-      break;
-    default:
-      ctx.fillText(this.subtype.toUpperCase()+" : "+this.name,this.x+20,this.y+13);
-      break;
-    }
-    for(var i=0;i<this.io.length;++i){
-      this.io[i].Redraw(ctx,this.x,this.y);
-    }
-    for(var i in this.buttons){
-      this.buttons[i].Redraw(ctx,this.x,this.y);
-    }
-    for(var i=0;i<this.params.length;++i){
-      var p=this.params[i];
-      p.Redraw(ctx,this.x,this.y);
-    }
-  };
-  this.HitTest=function(x,y){
-    for(var i=0;i<this.io.length;++i){
-      if(y>=this.y+this.io[i].y&&y<this.y+this.io[i].y+20
-        &&x>=this.x-5+this.io[i].x&&x<this.x+5+this.io[i].x+this.io[i].w)
-        return this.io[i];
-    }
-    for(var i=0;i<this.params.length;++i){
-      var p=this.params[i];
-      if(y>=this.y+p.y&&y<this.y+p.y+p.h)
-        return p;
-    }
-    for(var i in this.buttons){
-      if(this.buttons[i].HitTest(x-this.x,y-this.y)){
-        return this.buttons[i];
-      }
-    }
-    return this;
-  };
-  this.Move=function(x,y){
-    this.x=x,this.y=y;
-  };
-  this.Connect=function(target,o,i){
-    if(!o)
-      o=0;
-    if(!i)
-      i=0;
-    this.connect.push({"t":target,"o":o,"i":i});
-    if(target.type=="param")
-      this.node.connect(target.parent.node[target.name],o);
-    else
-      this.node.connect(target.node,o,i);
   };
 }
+ANode.prototype=new Widget();
+ANode.prototype.Redraw=function(ctx){
+  ctx.fillStyle="#000";
+  ctx.fillRect(this.x,this.y,this.w,this.h);
+  var g=ctx.createLinearGradient(this.x,this.y,this.x,this.y+20);
+  g.addColorStop(0,"#dfa");
+  g.addColorStop(1,"#bc7");
+  ctx.fillStyle=g;
+  ctx.fillRect(this.x+1,this.y+1,this.w-2,20-2);
+  ctx.fillStyle="#abf";
+  ctx.fillRect(this.x+1,this.y+21,this.w-2,this.ioh-1);
+  ctx.fillStyle="#000";
+  switch(this.subtype){
+  case "destination":
+    ctx.fillText("DESTINATION",this.x+20,this.y+13);
+    break;
+  default:
+    ctx.fillText(this.name,this.x+20,this.y+13);
+    break;
+  }
+  for(var i=0;i<this.io.length;++i){
+    this.io[i].Redraw(ctx,this.x,this.y);
+  }
+  for(var i in this.buttons){
+    this.buttons[i].Redraw(ctx,this.x,this.y);
+  }
+  for(var i=0;i<this.params.length;++i){
+    var p=this.params[i];
+    p.Redraw(ctx,this.x,this.y);
+  }
+};
+ANode.prototype.Connect=function(target,o,i){
+  if(!o)
+    o=0;
+  if(!i)
+    i=0;
+  this.connect.push({"t":target,"o":o,"i":i});
+  if(target.type=="param")
+    this.node.connect(target.parent.node[target.name],o);
+  else
+    this.node.connect(target.node,o,i);
+};
+ANode.prototype.Move=function(x,y){
+  this.x=x,this.y=y;
+};
+
+
 function Graph(canvas,actx,dest){
+  menu=document.getElementById("menu");
+  menu.onclick=MenuClick;
+  this.x=this.y=0;
   this.canvas=canvas;
   canvas.onmousedown=MouseDown;
   canvas.onmousemove=MouseMove;
   canvas.onmouseup=MouseUp;
-  canvas.oncontextmenu=function(e){e.preventDefault();};
   canvas.ondblclick=DblClick;
   this.ctx=canvas.getContext("2d");
   this.input=document.getElementById("input");
@@ -869,9 +1000,10 @@ function Graph(canvas,actx,dest){
   this.text=document.getElementById("text");
   this.actx=actx;
   this.dest=dest;
-  this.nodes=[new Node(this,"destination","destination",800,100)];
+  this.child=[new ANode(this,"destination","destination",800,100)];
   this.playing=false;
   this.strm=null;
+  this.conntarget=null;
   this.buffers=LoadBuffers(
     actx,
     {
@@ -886,41 +1018,50 @@ function Graph(canvas,actx,dest){
   );
   this.GetJson=function(){
     var o=[];
-    for(var i=0;i<this.nodes.length;++i){
-      var n=this.nodes[i];
+    for(var i=0;i<this.child.length;++i){
+      var n=this.child[i];
       var paramtab=[];
       var contab=[];
-      for(var j=0;j<n.params.length;++j){
-        var p=n.params[j];
-        paramtab.push({"name":p.name,"type":p.subtype,"value":p.value});
-      }
-      for(var j=0;j<n.connect.length;++j){
-        var p=n.connect[j];
-        if(p.t.type=="node"){
-          if(p.t.subtype=="destination")
-            contab.push({"t":"destination","o":p.o,"i":0});
-          else
-            contab.push({"t":p.t.name,"o":p.o,"i":p.i});
+      if(n.type=="node"){
+        for(var j=0;j<n.params.length;++j){
+          var p=n.params[j];
+          paramtab.push({"name":p.name,"type":p.subtype,"value":p.value});
         }
-        else if(p.t.type=="param")
-          contab.push({"t":p.t.parent.name+"."+p.t.name,"o":p.o});
+        for(var j=0;j<n.connect.length;++j){
+          var p=n.connect[j];
+          if(p.t.type=="node"){
+            if(p.t.subtype=="destination")
+              contab.push({"t":"destination","o":p.o,"i":0});
+            else
+              contab.push({"t":p.t.name,"o":p.o,"i":p.i});
+          }
+          else if(p.t.type=="param")
+            contab.push({"t":p.t.parent.name+"."+p.t.name,"o":p.o});
+        }
+        o.push({"type":n.subtype,"name":n.name,"x":n.x,"y":n.y,"params":paramtab,"connect":contab});
       }
-      o.push({"type":n.subtype,"name":n.name,"x":n.x,"y":n.y,"params":paramtab,"connect":contab});
+      else if(n.type=="knob"){
+        for(var j=0;j<n.connect.length;++j){
+          var p=n.connect[j];
+          contab.push({"t":p.t.parent.name+"."+p.t.name});
+        }
+        o.push({"type":"knob","name":n.name,"x":n.x,"y":n.y,"min":n.min,"max":n.max,"step":n.step,"value":n.value,"connect":contab});
+      }
     }
     return o;
   };
   this.Play=function(){
     this.playing=false;
-    for(var i=0;i<this.nodes.length;++i){
-      var n=this.nodes[i];
+    for(var i=0;i<this.child.length;++i){
+      var n=this.child[i];
       if(n.buttons.play && n.buttons.play.press){
         this.playing=true;
         break;
       }
     }
     if(this.playing){
-      for(var i=0;i<this.nodes.length;++i){
-        var n=this.nodes[i];
+      for(var i=0;i<this.child.length;++i){
+        var n=this.child[i];
         if(n.buttons.play){
           if(n.buttons.play.press){
             if(n.node.stop)
@@ -932,8 +1073,8 @@ function Graph(canvas,actx,dest){
     }
     else{
       var t=audioctx.currentTime+0.05;
-      for(var i=0;i<this.nodes.length;++i){
-        var n=this.nodes[i];
+      for(var i=0;i<this.child.length;++i){
+        var n=this.child[i];
         if(n.buttons.play){
           n.RestartNode();
           if(n.node.start)
@@ -970,16 +1111,21 @@ function Graph(canvas,actx,dest){
   };
   this.Load=function(obj){
     this.New();
-    this.nodes[0].x=obj[0].x;
-    this.nodes[0].y=obj[0].y;
+    this.child[0].x=obj[0].x;
+    this.child[0].y=obj[0].y;
     for(var i=1;i<obj.length;++i){
       var o=obj[i];
-      o.n=graph.AddNode(o.type,o.name,o.x,o.y);
-      for(var j=0;j<o.params.length;++j){
-        var p=o.params[j];
-        for(var k=0;k<o.n.params.length;++k){
-          if(o.n.params[k].name==o.params[j].name)
-            o.n.params[k].Set(o.params[j].value);
+      if(o.type=="knob"){
+        o.n=graph.AddKnob(o.x,o.y,o.min,o.max,o.step,o.value);
+      }
+      else{
+        o.n=graph.AddNode(o.type,o.name,o.x,o.y);
+        for(var j=0;j<o.params.length;++j){
+          var p=o.params[j];
+          for(var k=0;k<o.n.params.length;++k){
+            if(o.n.params[k].name==o.params[j].name)
+              o.n.params[k].Set(o.params[j].value);
+          }
         }
       }
     }
@@ -993,15 +1139,15 @@ function Graph(canvas,actx,dest){
     graph.Redraw();
   };
   this.New=function(){
-    while(this.nodes.length>1){
-      this.DelNode(this.nodes[1]);
+    while(this.child.length>1){
+      this.DelNode(this.child[1]);
     }
     this.Redraw();
   };
   this.Find=function(name){
     var s=name.split(".");
-    for(var i=0;i<this.nodes.length;++i){
-      var n=this.nodes[i];
+    for(var i=0;i<this.child.length;++i){
+      var n=this.child[i];
       if(s[0]==n.name){
         if(s.length>1){
           var p=n.params;
@@ -1016,23 +1162,27 @@ function Graph(canvas,actx,dest){
     }
   };
   this.ReConnect=function(){
-    for(var i=this.nodes.length-1;i>=1;--i){
-      var n=this.nodes[i];
-      n.node.disconnect();
-      if(n.subtype=="split")
-        n.node.disconnect(1);
+    for(var i=this.child.length-1;i>=1;--i){
+      var n=this.child[i];
+      if(n.type=="node"){
+        n.node.disconnect();
+        if(n.subtype=="split")
+          n.node.disconnect(1);
+      }
     }
-    for(var i=0;i<this.nodes.length;++i){
-      var n=this.nodes[i];
-      for(var j=0;j<n.connect.length;++j){
-        var c=n.connect[j];
-        switch(c.t.type){
-        case "node":
-          n.node.connect(c.t.node,c.o,c.i);
-          break;
-        case "param":
-          n.node.connect(c.t.parent.node[c.t.name],c.o);
-          break;
+    for(var i=0;i<this.child.length;++i){
+      var n=this.child[i];
+      if(n.type=="node"){
+        for(var j=0;j<n.connect.length;++j){
+          var c=n.connect[j];
+          switch(c.t.type){
+          case "node":
+            n.node.connect(c.t.node,c.o,c.i);
+            break;
+          case "param":
+            n.node.connect(c.t.parent.node[c.t.name],c.o);
+            break;
+          }
         }
       }
     }
@@ -1040,34 +1190,47 @@ function Graph(canvas,actx,dest){
   this.AddNode=function(type,name,x,y){
     if(name==null)
       name=this.GetNextName(type);
-    var node=new Node(this,name,type,x,y);
-    if(node.type)
-      this.nodes.push(node);
+    var node=new ANode(this,name,type,x,y);
     this.Redraw();
     return node;
   };
   this.DelNode=function(node){
-    for(var i=this.nodes.length-1;i>=0;--i){
-      var n=this.nodes[i];
-      for(var j=n.connect.length-1;j>=0;--j){
-        if(n.connect[j].t==node||n.connect[j].t.parent==node){
-          n.connect.splice(j,1);
+    if(node.type=="node"){
+      for(var i=this.child.length-1;i>=0;--i){
+        var n=this.child[i];
+        for(var j=n.connect.length-1;j>=0;--j){
+          if(n.connect[j].t==node||n.connect[j].t.parent==node){
+            n.connect.splice(j,1);
+          }
+        }
+        if(n==node){
+          node.node.disconnect();
+          if(node.subtype=="split")
+            node.node.disconnect(1);
+          if(node.buttons.play&&node.buttons.play.press)
+            node.node.stop(0);
+          if(node.subtype=="analys")
+            clearInterval(node.timerid);
+          this.child.splice(i,1);
         }
       }
-      if(n==node){
-        node.node.disconnect();
-        if(node.subtype=="split")
-          node.node.disconnect(1);
-        if(node.buttons.play&&node.buttons.play.press)
-          node.node.stop(0);
-        if(node.subtype=="analys")
-          clearInterval(node.timerid);
-        this.nodes.splice(i,1);
+    }
+    if(node.type=="knob"){
+      for(var i=this.child.length-1;i>=0;--i){
+        var n=this.child[i];
+        if(n==node){
+          document.getElementById("base").removeChild(n.elem);
+          this.child.splice(i,1);
+        }
       }
     }
     this.Redraw();
   };
   this.DisconnectNode=function(node){
+    if(node.type=="knob"){
+      this.DisconnectWire(node.connector[0]);
+      return;
+    }
     node.connect.length=0;
     node.node.disconnect();
     if(node.subtype=="split")
@@ -1075,31 +1238,64 @@ function Graph(canvas,actx,dest){
     this.Redraw();
   };
   this.DisconnectWire=function(target){
-    if(target.subtype=="out"){
-      var n=target.parent;
-      for(var j=n.connect.length-1;j>=0;--j){
-        var c=n.connect[j];
-        if(c.o==target.n)
-          n.connect.splice(j,1);
-      }
-      n.node.disconnect(target.parent.node,target.n);
-    }
-    else{
-      for(var i=this.nodes.length-1;i>=0;--i){
-        var n=this.nodes[i];
+    switch(target.parent.type){
+    case "knob":
+      target.parent.connect.length=0;
+      break;
+    case "io":
+      switch(target.parent.subtype){
+      case "out":
+        var n=target.parent.parent;
         for(var j=n.connect.length-1;j>=0;--j){
           var c=n.connect[j];
-          n.node.disconnect(c.o);
-          if(target.type=="param"){
-            if(c.t==target)
+          if(c.o==target.parent.n)
+            n.connect.splice(j,1);
+        }
+        n.node.disconnect(target.parent.node,target.n);
+        break;
+      case "in":
+        for(var i=this.child.length-1;i>=0;--i){
+          var n=this.child[i];
+          for(var j=n.connect.length-1;j>=0;--j){
+            var c=n.connect[j];
+            n.node.disconnect(c.o);
+            if(c.t==target.parent.parent&&c.i==target.parent.n)
               n.connect.splice(j,1);
           }
-          else if(target.subtype=="in"){
-            if(c.t==target.parent&&c.i==target.n)
-              n.connect.splice(j,1);
+          break;
+        }
+        break;
+      }
+      break;
+    case "param":
+      switch(target.subtype){
+      case "sig":
+        for(var i=this.child.length-1;i>=0;--i){
+          var n=this.child[i];
+          if(n.type=="node"){
+            for(var j=n.connect.length-1;j>=0;--j){
+              var c=n.connect[j];
+              n.node.disconnect(c.o);
+              if(c.t==target.parent)
+                n.connect.splice(j,1);
+            }
           }
         }
+        break;
+      case "knob":
+        for(var i=this.child.length-1;i>=0;--i){
+          var n=this.child[i];
+          if(n.type=="knob"){
+            for(var j=n.connect.length-1;j>=0;--j){
+              var c=n.connect[j];
+              if(c.t==target.parent)
+                n.connect.splice(j,1);
+            }
+          }
+        }
+        break;
       }
+      break;
     }
     this.ReConnect();
     this.Redraw();
@@ -1114,8 +1310,8 @@ function Graph(canvas,actx,dest){
       }
     }
     else if(target.subtype=="in"){
-      for(var i=this.nodes.length-1;i>=0;--i){
-        var n=this.nodes[i];
+      for(var i=this.child.length-1;i>=0;--i){
+        var n=this.child[i];
         for(var j=n.connect.length-1;j>=0;--j){
           var c=n.connect[j];
           if(c.t==target.parent&&c.i==target.n)
@@ -1124,8 +1320,8 @@ function Graph(canvas,actx,dest){
       }
     }
     else if(target.type=="param"){
-      for(var i=this.nodes.length-1;i>=0;--i){
-        var n=this.nodes[i];
+      for(var i=this.child.length-1;i>=0;--i){
+        var n=this.child[i];
         for(var j=n.connect.length-1;j>=0;--j){
           var c=n.connect[j];
         if(c.t==target)
@@ -1135,37 +1331,111 @@ function Graph(canvas,actx,dest){
     }
     return false;
   }
+  this.AddKnob=function(x,y,min,max,step,value){
+    var k=new Knob(graph,this.GetNextName("knob"),x,y,min,max,step,value);
+    k.elem.addEventListener("change",function(){
+      this.knob.value=parseFloat(ToFixed(this.knob.elem.childNodes[0].value));
+      for(var i=0;i<k.connect.length;++i){
+        var t=k.connect[i];
+        t.t.parent.node[t.t.name].value=t.t.value=this.knob.value;
+      }
+      graph.Redraw();
+    })
+    graph.Redraw();
+    return k;
+  }
   this.Redraw=function(){
+    this.ctx.lineWidth=2;
     this.ctx.font="bold 10px Verdana,sans-serif";
     this.ctx.fillStyle="#346";
     this.ctx.fillRect(0,0,canvas.width,canvas.height);
-    this.ctx.strokeStyle="#0e8";
     this.ctx.beginPath();
-    for(var i=0;i<this.nodes.length;++i){
-      var n=this.nodes[i];
-      for(var j=0;j<n.connect.length;++j){
-        var t=n.connect[j];
-        this.ctx.moveTo(n.x+n.w,n.y+30+t.o*20);
-        switch(t.t.type){
-        case "node":
-          this.ctx.bezierCurveTo(n.x+n.w+50,n.y+30+t.o*20,t.t.x-50,t.t.y+30+t.i*20,t.t.x,t.t.y+30+t.i*20);
-          break;
-        case "param":
-          this.ctx.bezierCurveTo(n.x+n.w+50,n.y+30+t.o*20,t.t.parent.x+t.t.x-50,t.t.parent.y+t.t.y+10,t.t.parent.x+t.t.x,t.t.parent.y+t.t.y+10);
-          break;
+    for(var i=this.child.length-1;i>=0;--i){
+      var n=this.child[i];
+      if(n.type=="node"){
+        for(var j=0;j<n.connect.length;++j){
+          var t=n.connect[j];
+          this.ctx.moveTo(n.x+n.w,n.y+30+t.o*20);
+          switch(t.t.type){
+          case "node":
+            this.ctx.bezierCurveTo(n.x+n.w+50,n.y+30+t.o*20,t.t.x-50,t.t.y+30+t.i*20,t.t.x,t.t.y+30+t.i*20);
+            break;
+          case "param":
+            this.ctx.bezierCurveTo(n.x+n.w+50,n.y+30+t.o*20,t.t.parent.x+t.t.x-50,t.t.parent.y+t.t.y+10,t.t.parent.x+t.t.x,t.t.parent.y+t.t.y+10);
+            break;
+          }
         }
       }
     }
+    this.ctx.strokeStyle="#0e8";
     this.ctx.stroke();
-    for(var i=0;i<this.nodes.length;++i){
-      this.nodes[i].Redraw(this.ctx);
+    this.ctx.beginPath();
+    for(var i=this.child.length-1;i>=0;--i){
+      var k=this.child[i];
+      if(k.type=="knob"){
+        for(var j=k.connect.length-1;j>=0;--j){
+          var t=k.connect[j].t;
+          var pk=k.GetPos();
+          var pt=t.GetPos();
+          pk.x+=32;
+          pt.x+=t.w,pt.y+=10;
+          this.ctx.moveTo(pk.x,pk.y);
+          this.ctx.bezierCurveTo(pk.x,pk.y-50,pt.x+50,pt.y,pt.x,pt.y);
+        }
+      }
     }
-  };
-  this.HitTest=function(x,y){
-    for(var i=this.nodes.length-1;i>=0;--i){
-      var n=this.nodes[i];
-      if(x>=n.x-5&&x<n.x+n.w+5&&y>=n.y&&y<n.y+n.h){
-        return n.HitTest(x,y);
+    this.ctx.strokeStyle="#ccf";
+    this.ctx.stroke();
+    for(var i=0;i<this.child.length;++i){
+      this.child[i].Redraw(this.ctx);
+    }
+    if(this.conntarget){
+      if(dragging){
+        var from=dragging.subtype+dragging.parent.type+dragging.parent.subtype;
+        var to=this.conntarget.subtype+this.conntarget.parent.type+this.conntarget.parent.subtype;
+        var con=false;
+        switch(from){
+        case "sigioout":
+          if(to=="sigioin"||to=="sigparama")
+            con=true;
+          break;
+        case "sigioin":
+          if(to=="sigioout")
+            con=true;
+          break;
+        case "sigparama":
+          if(to=="sigioout")
+            con=true;
+          break;
+        case "knobparama":
+        case "knobparamn":
+          if(to=="knobknobparam")
+            con=true;
+          break;
+        case "knobknobparam":
+          if(to=="knobparama"||to=="knobparamn")
+            con=true;
+          break;
+        }
+      }
+      else
+        con=true;
+      if(con){
+        this.ctx.beginPath();
+        var p=this.conntarget.GetPos();
+        this.ctx.arc(p.x+10,p.y+10,10,0,6.29);
+        this.ctx.strokeStyle="#fff";
+        this.ctx.stroke();
+      }
+      else{
+        this.ctx.beginPath();
+        var p=this.conntarget.GetPos();
+        this.ctx.moveTo(p.x,p.y);
+        this.ctx.lineTo(p.x+20,p.y+20);
+        this.ctx.moveTo(p.x+20,p.y);
+        this.ctx.lineTo(p.x,p.y+20);
+        this.ctx.strokeStyle="#f00";
+        this.ctx.stroke();
       }
     }
   };
@@ -1173,17 +1443,19 @@ function Graph(canvas,actx,dest){
     var n=1;
     for(;;){
       var nam=type+n;
-      for(var i=0;i<this.nodes.length;++i){
-        if(nam==this.nodes[i].name){
+      for(var i=0;i<this.child.length;++i){
+        if(nam==this.child[i].name){
           break;
         }
       }
-      if(i==this.nodes.length)
+      if(i==this.child.length)
         return nam;
       ++n;
     }
   };
 }
+Graph.prototype=new Widget();
+
 function KeyPress(e){
   switch(e.charCode){
   case 115://s
@@ -1206,117 +1478,171 @@ function DblClick(e){
   return false;
 }
 function MouseDown(e){
-  var rc=e.target.getBoundingClientRect();
+  var rc=graph.canvas.getBoundingClientRect();
   mouseX=Math.floor(e.clientX-rc.left);
   mouseY=Math.floor(e.clientY-rc.top);
-  var item=graph.HitTest(mouseX,mouseY);
-  if(item&&item.type=="btn"){
-    switch(item.name){
-    case "node":
-      var b=document.getElementById("popup");
-      b.style.display="block";
-      b.style.top=(item.parent.y+10)+"px";
-      b.style.left=(item.parent.x+10)+"px";
-      graph.focus=item.parent;
-      break;
-    case "play":
-      if(item.press){
-        item.press=false;
-        if(item.parent.node.stop)
-          item.parent.node.stop(0);
-      }
-      else{
-        if(item.press==false){
-          item.parent.RestartNode();
-          item.parent.graph.ReConnect();
-        }
-        item.press=true;
-        if(item.parent.node.start)
-          item.parent.node.start(0);
-      }
-      break;
-    case "mode":
-      item.press=!item.press;
-      break;
-    }
-    return;
-  }
-  dragging=item;
-  if(dragging){
+  dragging=graph.HitTest(mouseX,mouseY);
+  if(dragging)
     draggingoffset={"x":mouseX-dragging.x,"y":mouseY-dragging.y};
-  }
   MenuClear();
 }
 function MouseMove(e){
-  var rc = e.target.getBoundingClientRect();
+  var rc = graph.canvas.getBoundingClientRect();
   mouseX = Math.floor(e.clientX - rc.left);
   mouseY = Math.floor(e.clientY - rc.top);
   var target=graph.HitTest(mouseX,mouseY);
+  if(target&&target.type=="conn"){
+    if(graph.conntarget!=target){
+      graph.conntarget=target;
+      if(!dragging)
+        graph.Redraw();
+    }
+  }
+  else{
+    if(graph.conntarget){
+      graph.conntarget=null;
+      if(!dragging)
+        graph.Redraw();
+    }
+  }
   if(dragging){
-    if(dragging.type=="node"){
+    if(dragging.type=="node"||dragging.type=="knob"){
       dragging.Move(mouseX-draggingoffset.x,mouseY-draggingoffset.y);
       graph.Redraw();
+      return;
     }
-    if(dragging!=target&&((dragging.type=="param"&&dragging.subtype=="a")||dragging.type=="io")){
+    if(dragging!=target){
       graph.Redraw();
+      var p=dragging.GetPos();
       graph.ctx.beginPath();
-      graph.ctx.strokeStyle="#840";
-      if(dragging.subtype=="out"){
-        var px=dragging.parent.x+dragging.x+50;
-        var py=dragging.parent.y+dragging.y+10;
-        graph.ctx.moveTo(px,py);
-        graph.ctx.bezierCurveTo(px+50,py,mouseX-50,mouseY,mouseX,mouseY);
+      graph.ctx.moveTo(p.x+10,p.y+10);
+      switch(dragging.parent.type){
+      case "knobparam":
+        graph.ctx.strokeStyle="#ccf";
+        graph.ctx.bezierCurveTo(p.x+10,p.y+10-50,mouseX+50,mouseY,mouseX,mouseY);
+        break;
+      case "io":
+        graph.ctx.strokeStyle="#0f0";
+        if(dragging.parent.subtype=="in")
+          graph.ctx.bezierCurveTo(p.x+10-50,p.y+10,mouseX+50,mouseY,mouseX,mouseY);
+        else
+          graph.ctx.bezierCurveTo(p.x+10+50,p.y+10,mouseX-50,mouseY,mouseX,mouseY);
+        break;
+      case "param":
+        if(dragging.subtype=="sig"){
+          graph.ctx.strokeStyle="#0f0";
+          graph.ctx.bezierCurveTo(p.x+10-50,p.y+10,mouseX+50,mouseY,mouseX,mouseY);
+        }
+        else{
+          graph.ctx.strokeStyle="#ccf";
+          graph.ctx.bezierCurveTo(p.x+10+50,p.y+10,mouseX,mouseY-50,mouseX,mouseY);
+        }
+        break;
       }
-      else{
-        var px=dragging.parent.x+dragging.x;
-        var py=dragging.parent.y+dragging.y+10;
-        graph.ctx.moveTo(px,py);
-        graph.ctx.bezierCurveTo(px-50,py,mouseX+50,mouseY,mouseX,mouseY);
-      }
-      graph.ctx.strokeStyle="#fe8";
       graph.ctx.stroke();
     }
   }
 }
-function DisconnectMenu(target){
-  var m=document.getElementById("popup2");
-  m.style.left=(target.parent.x+target.x-3)+"px";
-  m.style.top=(target.parent.y+target.y+16)+"px";
-  m.style.display="block";
-  graph.focus=target;
-}
 function MouseUp(e){
-  var rc=e.target.getBoundingClientRect();
+  var rc=graph.canvas.getBoundingClientRect();
   mouseX=Math.floor(e.clientX-rc.left);
   mouseY=Math.floor(e.clientY-rc.top);
   var target=graph.HitTest(mouseX,mouseY);
-  if(dragging&&(dragging.type=="param"||dragging.type=="io")&&target==dragging){
-    if(target.type=="param" && mouseX>=dragging.parent.x+5)
-      target.Edit();
-    else{
-      if(graph.Connected(target))
-        DisconnectMenu(target);
+  if(dragging){
+    if(dragging==target){
+      switch(dragging.type){
+      case "btn":
+        switch(dragging.name){
+        case "node":
+          MenuClear();
+          var b=document.getElementById("popup");
+          b.style.display="block";
+          var pos=target.GetPos();
+          b.style.top=(pos.y+10)+"px";
+          b.style.left=(pos.x+10)+"px";
+          graph.focus=target.parent;
+          break;
+        case "play":
+          MenuClear();
+          if(target.press){
+            target.press=false;
+            if(target.parent.node.stop)
+              target.parent.node.stop(0);
+          }
+          else{
+            if(target.press==false){
+              target.parent.RestartNode();
+              target.parent.parent.ReConnect();
+            }
+            target.press=true;
+            if(target.parent.node.start)
+              target.parent.node.start(0);
+          }
+          break;
+        case "mode":
+          target.press=!target.press;
+          break;
+        }
+        break;
+      case "param":
+        target.Edit();
+        break;
+      case "knobparam":
+        target.Edit();
+        break;
+      case "conn":
+        switch(target.parent.type){
+        case "knob":
+          if(target.parent.connect.length>0)
+            DisconnectMenu(target);
+          break;
+        case "io":
+          if(target.parent.subtype=="out"&&target.parent.parent.connect.length>0)
+            DisconnectMenu(target);
+          if(target.parent.subtype=="in"&&graph.Connected(target.parent))
+            DisconnectMenu(target);
+          break;
+        case "param":
+          if(graph.Connected(target.parent))
+            DisconnectMenu(target);
+          break;
+        }
+        break;
+      }
     }
-  }
-  if(dragging&&target){
-    if(dragging.type=="io"&&dragging.subtype=="out"){
-      if(target.type=="io"&&target.subtype=="in")
-        dragging.parent.Connect(target.parent,dragging.n,target.n);
-      if(target.type=="param"&&target.subtype=="a")
-        dragging.parent.Connect(target,dragging.n);
-    }
-    else if(dragging.type=="io"&&dragging.subtype=="in"){
-      if(target.type=="io"&&target.subtype=="out")
-        target.parent.Connect(dragging.parent,target.n,dragging.n);
-    }
-    else if(dragging.type=="param"){
-      if(target.type=="io"&&target.subtype=="out"){
-        target.parent.Connect(dragging,target.n);
+    else if(target){
+      if(dragging.parent.type=="io"){
+        if(dragging.parent.subtype=="out"&&target.parent&&target.parent.type=="io"&&target.parent.subtype=="in")
+          dragging.parent.parent.Connect(target.parent.parent,dragging.parent.n,target.parent.n);
+        if(dragging.parent.subtype=="out"&&target.parent&&target.parent.type=="param"&&target.parent.subtype=="a")
+          dragging.parent.parent.Connect(target.parent,dragging.parent.n);
+        if(dragging.parent.subtype=="in"&&target.parent&&target.parent.type=="io"&&target.parent.subtype=="out")
+          target.parent.parent.Connect(dragging.parent.parent,target.parent.n,dragging.parent.n);
+      }
+      if(dragging.parent.type=="param"){
+        if(dragging.parent.subtype=="a"&&target.parent.type=="io"&&target.parent.subtype=="out")
+          target.parent.parent.Connect(dragging.parent,dragging.parent.n);
+        if(target.parent.parent.type=="knob")
+          target.parent.parent.Connect(dragging.parent);
+      }
+      if(dragging.parent.type=="knobparam"){
+        if(target.parent.type=="param")
+          dragging.parent.parent.Connect(target.parent);
       }
     }
   }
+  if(dragging==null)
+    MenuClear();
   dragging=null;
   graph.Redraw();
+}
+function DisconnectMenu(target){
+  var p=target.GetPos();
+  var m=document.getElementById("popup2");
+  m.style.left=(p.x+10)+"px";
+  m.style.top=(p.y+10)+"px";
+  m.style.display="block";
+  graph.focus=target;
 }
 function Resize(){
   graph.canvas.width=window.innerWidth;
@@ -1371,10 +1697,7 @@ function MenuClick(e){
     graph.Link();
     break;
   case "addknob":
-    var e=document.createElement("div");
-    e.setAttribute("class","knobpane");
-    e.innerHTML="<webaudio-knob diameter='32'></webaudio-knob>";
-    document.getElementById("base").appendChild(e);
+    graph.AddKnob(500,300,0,100,1,0);
     break;
   case "addosc":
   case "addbufsrc":
@@ -1405,8 +1728,6 @@ function MenuClick(e){
   MenuClear();
 }
 function Init(){
-  menu=document.getElementById("menu");
-  menu.onclick=MenuClick;
   document.onkeydown=KeyDown;
   document.onkeypress=KeyPress;
   window.onresize=Resize;

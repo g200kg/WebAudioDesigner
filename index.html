@@ -10,7 +10,7 @@ body{
   padding:0px;
   overflow:hidden;
   user-select: none;
-  -moz-user-select: none;
+  -moz-user-select: none; 
   -webkit-user-select: none;
 }
 .title{
@@ -87,10 +87,14 @@ button {
   text-align:center;
 }
 #popup{
+  background:rgba(0,0,0,0.3);
+  padding:5px;
   position:absolute;
   display:none;
 }
 #popup2{
+  background:rgba(0,0,0,0.3);
+  padding:5px;
   position:absolute;
   display:none;
 }
@@ -201,16 +205,16 @@ canvas{
 }
 .knobpane{
   position:absolute;
-  background:#ccc;
   top:110px;
   left:110px;
-  padding:10px 10px 30px 10px;
+  width:32px;
+  height:32px;
 }
 webaudio-knob{
 }
 </style>
-<!--    <script src="polymer.min.js"></script>
-    <link rel="import" href="controls.html">-->
+<script src="polymer.min.js"></script>
+<link rel="import" href="controls.html">
 </head>
 <body onload="Init()">
   <div id="header">
@@ -220,7 +224,7 @@ webaudio-knob{
   <div id="base" style="position:relative">
     <canvas id="cv" width="1024" height="768">
     </canvas>
-    <webaudio-knob diameter="32"></webaudio-knob>
+    <div id="knobend"></div>
     <input id="input"/>
     <textarea id="text" spellcheck="false"></textarea>
     <select id="select"></select>
@@ -232,7 +236,7 @@ webaudio-knob{
       <p>GitHub page : <a href="https://github.com/g200kg/webaudiodesigner">https://github.com/g200kg/webaudiodesigner</a></p>
       <h2>License</h2>
       <p>Licensed under MIT License except Impulse Response files.</p>
-      <p>Impulse Response files are :<br/>
+      <p>Impulse Response files are licensed under :<br/>
       <a href="http://www.voxengo.com/impulses/" target="_blank">http://www.voxengo.com/impulses/</a></p>
       <h2>Usage</h2>
       <h4>Menu</h4>
@@ -295,7 +299,7 @@ webaudio-knob{
         <button class="menuitem" id="addsplit">ChannelSplitter</button>
         <button class="menuitem" id="addmerge">ChannelMerger</button>
       </div>
-<!--      <button class="mainmenubtn" id="menuknobbtn">Add Knob</button>-->
+      <button class="mainmenubtn" id="menuknobbtn">Add Knob</button>
       <div class="menudropdown" id="menuknob">
         <button class="menuitem" id="addknob">Knob</button>
       </div>

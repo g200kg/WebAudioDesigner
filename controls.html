@@ -151,12 +151,14 @@
 					this.ctlStep = log2(this.step);
 					if (this.ctlStep == 0)
 						this.ctlStep = 0.0001;
-				} else
+				} else{
 					this.setValue(this.value);
+					this.ctlStep=this.step;
+				}
 				this.fire('change');
 			},
 			value:      0,
-			units:      "",
+			units:      "", 
 			log:        false,
 			valueold:	NaN,
 			valuedisp:	"0",
@@ -278,7 +280,7 @@
 						valueNumber = valueNumber/1000;
 						// between 1k and 10k - show two digits, else show one
 						this.valuedisp = valueNumber.toFixed((valueNumber<10)?2:1) + "k";
-					}
+					} 
 				}
 				if(fire)
 					this.fire('change');
@@ -667,7 +669,7 @@
 					this.defvalue = this.value;
 			},
 			value:			0,
-			valueold: 		0,
+			valueold: 		0, 
 			defvalue:		null,
 			type:			'toggle',
 			width:			24,
@@ -897,7 +899,7 @@
 			valuesold: 	[],
 			dispvalues:	[],
 			min:        0,
-			keys: 		25,
+			keys: 		25, 
 			max:        72,
 			width:      480,
 			height:     128,
