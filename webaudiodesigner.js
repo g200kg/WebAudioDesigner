@@ -1592,9 +1592,9 @@ function MouseUp(e){
         break;
       case "conn":
         switch(target.parent.type){
-        case "knob":
-          if(target.parent.connect.length>0)
-            DisconnectMenu(target);
+        case "knobparam":
+          if(target.parent.parent.connect.length>0)
+            DisconnectMenu(target.parent);
           break;
         case "io":
           if(target.parent.subtype=="out"&&target.parent.parent.connect.length>0)
