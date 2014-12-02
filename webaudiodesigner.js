@@ -156,8 +156,9 @@ function ExportJs(json){
   "     this.audioctx = new AudioContext();\n"+
   "  }\n"+
   "  if(!destination)\n"+
-  "    this.destination=this.audioctx.destination;\n"+
-  "  this.SetupStream();\n";
+  "    this.destination=this.audioctx.destination;\n";
+  if(strm)
+    js+="  this.SetupStream();\n";
   if(bufs.length)
     js+="  this.buffers = LoadBuffers(this.audioctx,sampleurl);\n";
   for(var i=1;i<obj.length;++i){
@@ -890,7 +891,18 @@ function ANode(parent,name,subtype,x,y){
     this.node=actx.createConvolver();
     this.params=[
       new Param(this,0,40,this.w,20,70,0,"b",null,"normalize"),
-      new Param(this,0,60,this.w,40,4,20,"ob",["Five Columns Long.wav","French 18th Century Salon.wav","Narrow Bumpy Space.wav"],"buffer"),
+      new Param(this,0,60,this.w,40,4,20,"ob",[
+        "Five Columns Long.wav",
+        "Five Columns.wav",
+        "French 18th Century Salon.wav",
+        "Going Home.wav",
+        "In The Silo Revised.wav",
+        "Narrow Bumpy Space.wav",
+        "Nice Drum Room.wav",
+        "Parking Garage.wav",
+        "Rays.wav",
+        "Trig Room.wav",
+        ],"buffer"),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -1012,8 +1024,15 @@ function Graph(canvas,actx,dest){
       "rhythm.wav":"samples/rhythm.wav",
       "snare.wav":"samples/snare.wav",
       "Five Columns Long.wav":"samples/ir/IMreverbs1/Five Columns Long.wav",
+      "Five Columns.wav":"samples/ir/IMreverbs1/Five Columns.wav",
       "French 18th Century Salon.wav":"samples/ir/IMreverbs1/French 18th Century Salon.wav",
+      "Going Home.wav":"samples/ir/IMreverbs1/Going Home.wav",
+      "In The Silo Revised.wav":"samples/ir/IMreverbs1/In The Silo Revised.wav",
       "Narrow Bumpy Space.wav":"samples/ir/IMreverbs1/Narrow Bumpy Space.wav",
+      "Nice Drum Room.wav":"samples/ir/IMreverbs1/Nice Drum Room.wav",
+      "Parking Garage.wav":"samples/ir/IMreverbs1/Parking Garage.wav",
+      "Rays.wav":"samples/ir/IMreverbs1/Rays.wav",
+      "Trig Room.wav":"samples/ir/IMreverbs1/Trig Room.wav",
     }
   );
   this.GetJson=function(){
