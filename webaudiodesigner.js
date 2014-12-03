@@ -63,24 +63,28 @@ function ExportJs(json){
   }
   function Connect(node,indent,mode){
     var c=node.connect;
-    for(j=0;j<c.length;++j){
-      var m=(c[j].t.substr(0,3)=="osc"||c[j].t.substr(0,6)=="bufsrc");
-      if(mode==m){
-        if(c[j].i)
-          js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+","+c[j].o+","+c[j].i+");\n";
-        else
-          js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+","+c[j].o+");\n";
+    if(node.type!="knob"){
+      for(j=0;j<c.length;++j){
+        var m=(c[j].t.substr(0,3)=="osc"||c[j].t.substr(0,6)=="bufsrc");
+        if(mode==m){
+          if(c[j].i)
+            js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+","+c[j].o+","+c[j].i+");\n";
+          else
+            js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+","+c[j].o+");\n";
+        }
       }
     }
   }
   var obj=eval(json);
-  var js="<script>\n//WebAudioDesigner Data:"+json+"\n\n";
   var bufs=[];
-  var strm=false;
+  var usestrm=false;
+  var useknob=false;
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
     if(o.type=="strmsrc")
-      strm=true;
+      usestrm=true;
+    if(o.type=="knob")
+      useknob=true;
     if(o.type=="bufsrc"||o.type=="conv"){
       for(var j=0;j<o.params.length;++j){
         var p=o.params[j];
@@ -90,6 +94,12 @@ function ExportJs(json){
       }
     }
   }
+  var js="<!doctype html>\n<html>\n";
+  if(useknob){
+    js+="<script src='polymer.min.js'></script>\n"
+      +"<link rel='import' href='controls.html'>\n";
+  }
+  js+="<script>\n//WebAudioDesigner Data:"+json+"\n\n";
   if(bufs.length){
     js+="// (BufferSource) or (Convolver) is used. You should place \n"+
     "// audio files to appropreate location on the server.\n"+
@@ -128,7 +138,7 @@ function ExportJs(json){
   }
   js+=
   "function AudioEngine(audioctx,destination){\n";
-  if(strm){
+  if(usestrm){
     js+=
     "  this.SetupStream=function(){\n"+
     "    navigator.getUserMedia=(navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia);\n"+
@@ -157,7 +167,7 @@ function ExportJs(json){
   "  }\n"+
   "  if(!destination)\n"+
   "    this.destination=this.audioctx.destination;\n";
-  if(strm)
+  if(usestrm)
     js+="  this.SetupStream();\n";
   if(bufs.length)
     js+="  this.buffers = LoadBuffers(this.audioctx,sampleurl);\n";
@@ -241,7 +251,7 @@ function ExportJs(json){
   }
   js+="  };\n}\n";
   js+="window.addEventListener('load',function(){audioengine=new AudioEngine()});\n";
-  js+="</script>\n<button onclick='audioengine.start()'>Start</button>\n";
+  js+="</script>\n<button onclick='audioengine.start()'>Start</button>\n</html>\n";
   var jspane=document.getElementById("jspane");
   var jsfile=document.getElementById("jsfile");
   var jsclose=document.getElementById("jsclose");
@@ -354,6 +364,7 @@ KnobParam.prototype.Redraw=function(ctx){
     graph.text.style.display="block";
     graph.input.style.display="none";
     graph.select.style.display="none";
+    graph.urlinput.style.display="none";
   }
 };
 function Knob(parent,name,x,y,min,max,step,value){
@@ -362,7 +373,7 @@ function Knob(parent,name,x,y,min,max,step,value){
   this.elem.setAttribute("class","knobpane");
   this.elem.style.left=(x+16)+"px";
   this.elem.style.top=(y+64)+"px";
-  document.getElementById("base").insertBefore(this.elem,document.getElementById("knobend"));
+  document.getElementById("base").insertBefore(this.elem,document.getElementById("insertpoint"));
   this.elem.knob=this;
   this.parent=parent;
   this.type="knob";
@@ -506,6 +517,9 @@ function Param(parent,x,y,w,h,tx,ty,subtype,option,name){
     this.value=option;
     this.parent.node[name]=eval("("+this.value+")");
     break;
+  case "tu":
+    this.value=option;
+    break;
   case "ob":
     this.value=option[0];
     this.parent.node[name]=this.parent.parent.buffers[this.value].data;
@@ -535,6 +549,10 @@ Param.prototype.Set=function(value){
     this.value=value;
     this.parent.node[this.name]=eval("("+value+")");
     break;
+  case "tu":
+    this.value=value;
+    this.parent.elem.src=this.value;
+    break;
   case "ob":
     this.value=value;
     this.parent.node[this.name]=this.parent.parent.buffers[this.value].data;
@@ -547,9 +565,13 @@ Param.prototype.Redraw=function(ctx,bx,by){
     this.connector[i].Redraw(ctx);
   ctx.fillStyle="#000";
   ctx.fillRect(bx+this.x,by+this.y,this.w,this.h);
-  var g=ctx.createLinearGradient(0,by+this.y,0,by+this.y+this.h);
-  g.addColorStop(0,"#eef");
-  g.addColorStop(1,"#bbc");
+  if(this.subtype=="tu")
+    var g="#abf";
+  else{
+    var g=ctx.createLinearGradient(0,by+this.y,0,by+this.y+this.h);
+    g.addColorStop(0,"#eef");
+    g.addColorStop(1,"#bbc");
+  }
   ctx.fillStyle=g;
   ctx.fillRect(bx+this.x+1,by+this.y+1,this.w-2,this.h-1);
   ctx.fillStyle="#000";
@@ -573,6 +595,11 @@ Param.prototype.Redraw=function(ctx,bx,by){
   case "ob":
     ctx.fillText(this.value,bx+this.x+this.tx,by+this.y+14+this.ty);
     break;
+  case "tu":
+    ctx.font="normal 10px Verdana,sans-serif";
+    ctx.fillText(this.value.substr(-27),bx+this.x+30,by+this.y+14);
+    ctx.font="bold 10px Verdana,sans-serif";
+    break;
   default:
     ctx.fillText(this.value,bx+this.x+this.tx,by+this.y+14);
     break;
@@ -590,14 +617,26 @@ Param.prototype.Redraw=function(ctx,bx,by){
       graph.input.style.display="block";
       graph.text.style.display="none";
       graph.select.style.display="none";
+      graph.urlinput.style.display="none";
       break;
     case "tc":
     case "ts":
       graph.text.style.left=(this.parent.x+this.x)+"px";
-      graph.text.style.top=(this.parent.y+this.y)+"px";
+      graph.text.style.top=(this.parent.y+this.y+14)+"px";
       graph.text.style.width=this.tx+"px";
       graph.text.style.height=this.ty+"px";
       graph.text.style.display="block";
+      graph.input.style.display="none";
+      graph.select.style.display="none";
+      graph.urlinput.style.display="none";
+      break;
+    case "tu":
+      graph.urlinput.style.left=(this.parent.x+this.x)+"px";
+      graph.urlinput.style.top=(this.parent.y+this.y)+"px";
+      graph.urlinput.style.width=this.tx+"px";
+      graph.urlinput.style.height=this.ty+"px";
+      graph.urlinput.style.display="block";
+      graph.text.style.display="none";
       graph.input.style.display="none";
       graph.select.style.display="none";
       break;
@@ -611,6 +650,7 @@ Param.prototype.Redraw=function(ctx,bx,by){
       graph.select.style.display="block";
       graph.input.style.display="none";
       graph.text.style.display="none";
+      graph.urlinput.style.display="none";
       break;
     }
   }
@@ -668,6 +708,15 @@ Param.prototype.Edit=function(){
     graph.Redraw();
     graph.text.focus();
     return;
+  case "tu":
+    graph.urlinput.value=this.value;
+    graph.urlinput.onchange=function(e){
+      this.Set(e.target.value);
+    }.bind(this);
+    graph.inputfocus=this;
+    graph.Redraw();
+    graph.urlinput.focus();
+    return;
   }
 };
 
@@ -689,6 +738,26 @@ function ANode(parent,name,subtype,x,y){
     this.node=actx.destination;
     this.params=[];
     this.buttons={};
+    break;
+  case "elemsrc":
+    this.h=92;
+    this.ioh=71;
+    this.w=230;
+    this.io=[new Io("out",this,this.w-50,20,0)];
+    this.params=[new Param(this,0,40,this.w,40,350,15,"tu","http://www.g200kg.com/music/kerokeroshiyouyo.mp3","url")];
+    this.elem=document.createElement("audio");
+    this.elem.setAttribute("class","audiopane");
+    this.elem.setAttribute("src","http://www.g200kg.com/music/kerokeroshiyouyo.mp3");
+    this.elem.setAttribute("controls","true");
+    this.elem.style.left=(this.x+1)+"px";
+    this.elem.style.top=(this.y+61)+"px";
+//    this.elem.onloadeddata=function(){this.node=actx.createMediaElementSource(this.elem);console.log(this.elem)}.bind(this);
+//    this.elem.onended=function(){this.buttons.play.press=false;graph.Redraw();}.bind(this);
+    document.getElementById("base").insertBefore(this.elem,document.getElementById("this.elem"));
+    try{
+      this.node=actx.createMediaElementSource(this.elem);
+    } catch(e){alert("cannot use MediaElementSource on this browser");}
+    this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "strmsrc":
     if(graph.strm==null){
@@ -994,6 +1063,10 @@ ANode.prototype.Connect=function(target,o,i){
 };
 ANode.prototype.Move=function(x,y){
   this.x=x,this.y=y;
+  if(this.elem){
+    this.elem.style.left=(this.x+1)+"px";
+    this.elem.style.top=(this.y+61)+"px";
+  }
 };
 
 
@@ -1010,6 +1083,7 @@ function Graph(canvas,actx,dest){
   this.input=document.getElementById("input");
   this.select=document.getElementById("select");
   this.text=document.getElementById("text");
+  this.urlinput=document.getElementById("urlinput");
   this.actx=actx;
   this.dest=dest;
   this.child=[new ANode(this,"destination","destination",800,100)];
@@ -1073,7 +1147,7 @@ function Graph(canvas,actx,dest){
     this.playing=false;
     for(var i=0;i<this.child.length;++i){
       var n=this.child[i];
-      if(n.buttons.play && n.buttons.play.press){
+      if(n.buttons.play&&n.buttons.play.press){
         this.playing=true;
         break;
       }
@@ -1083,7 +1157,11 @@ function Graph(canvas,actx,dest){
         var n=this.child[i];
         if(n.buttons.play){
           if(n.buttons.play.press){
-            if(n.node.stop)
+            if(n.subtype=="elemsrc"){
+              n.elem.pause();
+              n.elem.currentTime=0;
+            }
+            else if(n.node.stop)
               n.node.stop(0);
             n.buttons.play.press=false;
           }
@@ -1094,9 +1172,11 @@ function Graph(canvas,actx,dest){
       var t=audioctx.currentTime+0.05;
       for(var i=0;i<this.child.length;++i){
         var n=this.child[i];
+        if(n.subtype=="elemsrc")
+          n.elem.play();
         if(n.buttons.play){
           n.RestartNode();
-          if(n.node.start)
+        if(n.node.start)
             n.node.start(t);
           n.buttons.play.press=true;
         }
@@ -1223,10 +1303,13 @@ function Graph(canvas,actx,dest){
           }
         }
         if(n==node){
-          node.node.disconnect();
+          if(node.node)
+            node.node.disconnect();
           if(node.subtype=="split")
             node.node.disconnect(1);
-          if(node.buttons.play&&node.buttons.play.press)
+          if(node.subtype=="elemsrc")
+            document.getElementById("base").removeChild(node.elem);
+          if(node.buttons.play&&node.buttons.play.press&&node.node.stop)
             node.node.stop(0);
           if(node.subtype=="analys")
             clearInterval(node.timerid);
@@ -1281,7 +1364,6 @@ function Graph(canvas,actx,dest){
             if(c.t==target.parent.parent&&c.i==target.parent.n)
               n.connect.splice(j,1);
           }
-          break;
         }
         break;
       }
@@ -1486,6 +1568,10 @@ function KeyDown(e){
   if(t=="INPUT"||t=="TEXTAREA")
     return;
   switch(e.keyCode){
+//  case 65:
+//    var v=document.querySelector(".audiopane");
+//    var k=graph.actx.createMediaElementSource(v);
+//    return;
   case 8:
     e.preventDefault();
     return false;
@@ -1582,17 +1668,26 @@ function MouseUp(e){
           graph.focus=target.parent;
           break;
         case "play":
-          MenuClear();
+          if(target.parent.subtype=="elemsrc"){
+            if(target.press){
+              target.press=false;
+              target.parent.elem.pause();
+              target.parent.elem.currentTime=0;
+            }
+            else{
+              target.press=true;
+              target.parent.elem.play();
+            }
+            break;
+          }
           if(target.press){
             target.press=false;
             if(target.parent.node.stop)
               target.parent.node.stop(0);
           }
           else{
-            if(target.press==false){
-              target.parent.RestartNode();
-              target.parent.parent.ReConnect();
-            }
+            target.parent.RestartNode();
+            target.parent.parent.ReConnect();
             target.press=true;
             if(target.parent.node.start)
               target.parent.node.start(0);
@@ -1650,8 +1745,8 @@ function MouseUp(e){
       }
     }
   }
-  if(dragging==null)
-    MenuClear();
+//  if(dragging==null)
+//    MenuClear();
   dragging=null;
   graph.Redraw();
 }
@@ -1676,6 +1771,7 @@ function MenuClear(){
   document.getElementById("input").style.display="none";
   document.getElementById("select").style.display="none";
   document.getElementById("text").style.display="none";
+  document.getElementById("urlinput").style.display="none";
   graph.inputfocus=null;
 }
 function MenuClick(e){
@@ -1721,6 +1817,7 @@ function MenuClick(e){
   case "addosc":
   case "addbufsrc":
   case "addstrmsrc":
+  case "addelemsrc":
   case "addgain":
   case "addfilt":
   case "adddelay":

@@ -105,6 +105,13 @@ button {
   font-size:10px;
   font-weight:bold;
 }
+#urlinput{
+  position:absolute;
+  display:none;
+  font-family:Verdana,sans-serif;
+  font-size:10px;
+  font-weight:normal;
+}
 #select{
   position:absolute;
   display:none;
@@ -210,11 +217,20 @@ canvas{
   width:32px;
   height:32px;
 }
+.audiopane{
+  position:absolute;
+  top:110px;
+  left:110px;
+  width:228px;
+  height:30px;
+  border:0px;
+}
 webaudio-knob{
 }
 </style>
-<script src="polymer.min.js"></script>
-<link rel="import" href="controls.html">
+<script src="webcomponents/webcomponents.min.js"></script>
+<link rel="import" href="webcomponents/polymer.html">
+<link rel="import" href="webcomponents/controls.html">
 </head>
 <body onload="Init()">
   <div id="header">
@@ -224,8 +240,15 @@ webaudio-knob{
   <div id="base" style="position:relative">
     <canvas id="cv" width="1024" height="768">
     </canvas>
-    <div id="knobend"></div>
+    <div id="insertpoint"></div>
     <input id="input"/>
+    <input id="urlinput" list="urllist" spellcheck="false"/>
+    <datalist id="urllist">
+      <option value="http://www.g200kg.com/music/kerokeroshiyouyo.mp3"/>
+      <option value="http://www.g200kg.com/music/kinounokoto.mp3"/>
+      <option value="http://www.g200kg.com/music/sabire.mp3"/>
+      <option value="http://www.g200kg.com/music/omottemitari.mp3"/>
+    </datalist>
     <textarea id="text" spellcheck="false"></textarea>
     <select id="select"></select>
     <div id="aboutpane">
@@ -286,7 +309,8 @@ webaudio-knob{
       <div class="menudropdown" id="menunode">
         <button class="menuitem" id="addosc">Oscillator</button>
         <button class="menuitem" id="addbufsrc">BufferSource</button>
-        <button class="menuitem" id="addstrmsrc">MediaStreamSource(Mic)</button>
+        <button class="menuitem" id="addstrmsrc">MediaStreamSource<br/>(from Mic)</button>
+        <button class="menuitem" id="addelemsrc">MediaElementSource<br/>(from URL)</button>
         <button class="menuitem" id="addgain">Gain</button>
         <button class="menuitem" id="addfilt">BiquadFilter</button>
         <button class="menuitem" id="adddelay">Delay</button>
