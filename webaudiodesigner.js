@@ -75,6 +75,7 @@ function ExportJs(json){
       }
     }
   }
+  var files=[];
   var obj=eval(json);
   var bufs=[];
   var usestrm=false;
@@ -94,19 +95,29 @@ function ExportJs(json){
       }
     }
   }
-  var js="<!doctype html>\n<html>\n";
+  var js="<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n<body>\n";
   if(useknob){
-    js+="<script src='polymer.min.js'></script>\n"
-      +"<link rel='import' href='controls.html'>\n";
+    files.push("webcomponents/webcomponents.min.js");
+    files.push("webcomponents/polymer.js");
+    files.push("webcomponents/polymer.html");
+    files.push("webcomponents/layout.html");
+    files.push("webcomponents/controls.html");
+    js+="<!-- Knobs are used. You should place webcomponents.min.js / polymer.js / polymer.html / layout.html / controls.html to webcomponents folder -->\n";
+    js+="<script src=\"webcomponents/webcomponents.min.js\"></script>\n"
+      +"<link rel=\"import\" href=\"webcomponents/polymer.html\">\n"
+      +"<link rel=\"import\" href=\"webcomponents/controls.html\">\n"
+      +"<style>\nwebaudio-knob{margin:10px;}\n</style>\n";
   }
   js+="<script>\n//WebAudioDesigner Data:"+json+"\n\n";
   if(bufs.length){
-    js+="// (BufferSource) or (Convolver) is used. You should place \n"+
-    "// audio files to appropreate location on the server.\n"+
-    "// sampleurl object has the 'filename':'path to file' pair.\n\n";
+    js+="// (BufferSource) or (Convolver) is used. You should place \n"
+      +"// audio files to samples folder. * Note that the IR files are not MIT licensed.\n"
+      +"// sampleurl object has the 'filename':'path to file' pairs.\n\n";
     js+="var sampleurl={\n";
-    for(var i=0;i<bufs.length;++i)
+    for(var i=0;i<bufs.length;++i){
       js+="  '"+bufs[i]+"':'samples/"+bufs[i]+"',\n";
+      files.push("samples/"+bufs[i]);
+    }
     js+="};\n\n";
     js+=
       "function LoadBuffers(actx,list){\n"+
@@ -176,6 +187,9 @@ function ExportJs(json){
     switch(o.type){
     case "strmsrc":
       break;
+    case "elemsrc":
+      js+="  this."+o.name+" = this.audioctx.createMediaElementSource(document.getElementById(\""+o.name+"\"));\n";
+      break;
     case "gain":
       js+="  this."+o.name+" = this.audioctx.createGain();\n";
       js+=SetupParams(o,2);
@@ -226,6 +240,21 @@ function ExportJs(json){
       Connect(o,2,false);
     }
   }
+  for(var i=0;i<obj.length;++i){
+    var o=obj[i];
+    if(o.type=="knob"){
+      js+="  document.getElementById('"+o.name+"').addEventListener('change',function(e){\n";
+      for(var j=0;j<o.connect.length;++j){
+        var c=o.connect[j];
+        var n=c.t;
+        if(n.indexOf(".")>0)
+          n=n.substring(0,n.indexOf("."));
+        js+="    if(this."+n+")\n"
+          + "      this."+c.t+".value=e.target.value;\n";
+      }
+      js+="  }.bind(this));\n";
+    }
+  }
   js+="  this.start=function(){\n";
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
@@ -251,12 +280,25 @@ function ExportJs(json){
   }
   js+="  };\n}\n";
   js+="window.addEventListener('load',function(){audioengine=new AudioEngine()});\n";
-  js+="</script>\n<button onclick='audioengine.start()'>Start</button>\n</html>\n";
+  js+="</script>\n<button onclick='audioengine.start()'>Start</button><br/>\n";
+  for(var i=0;i<obj.length;++i){
+    var o=obj[i];
+    if(o.type=="knob"){
+      js+="<webaudio-knob id=\""+o.name+"\" diameter=\"32\" min=\""+o.min+"\" max=\""+o.max+"\" step=\""+o.step+"\" value=\""+o.value+"\"></webaudio-knob>\n";
+    }
+  }
+  for(var i=0;i<obj.length;++i){
+    var o=obj[i];
+    if(o.type=="elemsrc"){
+      js+="<audio id=\""+o.name+"\" src=\""+o.params[0].value+"\" controls></audio>\n";
+    }
+  }
+  js+="</body>\n</html>\n";
   var jspane=document.getElementById("jspane");
   var jsfile=document.getElementById("jsfile");
   var jsclose=document.getElementById("jsclose");
   var jsdownload=document.getElementById("jsdownload");
-  jsfile.value=js;
+  jsfile.innerHTML=js;
   jspane.style.display="block";
   jsclose.onclick=function(){document.getElementById("jspane").style.display="none";};
   var url=window.URL||window.webkitURL;
@@ -264,7 +306,12 @@ function ExportJs(json){
   var bURL=url.createObjectURL(b);
   var link=document.getElementById("jsdownload");
   link.setAttribute("href",bURL);
-  link.setAttribute("download","WebAudiodesigner.html")
+  link.setAttribute("download","WebAudiodesigner.html");
+  var fl="Related files : ";
+  for(var i=0;i<files.length;++i){
+    fl+=" <a href=\""+files[i]+"\">"+files[i]+"</a> ";
+  }
+  document.getElementById("files").innerHTML=fl;
 }
 function ToFixed(n){
   n=n.toFixed(3);
@@ -753,7 +800,7 @@ function ANode(parent,name,subtype,x,y){
     this.elem.style.top=(this.y+61)+"px";
 //    this.elem.onloadeddata=function(){this.node=actx.createMediaElementSource(this.elem);console.log(this.elem)}.bind(this);
 //    this.elem.onended=function(){this.buttons.play.press=false;graph.Redraw();}.bind(this);
-    document.getElementById("base").insertBefore(this.elem,document.getElementById("this.elem"));
+    document.getElementById("base").insertBefore(this.elem,document.getElementById("insertpoint"));
     try{
       this.node=actx.createMediaElementSource(this.elem);
     } catch(e){alert("cannot use MediaElementSource on this browser");}

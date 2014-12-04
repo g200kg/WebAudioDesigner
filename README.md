@@ -15,7 +15,7 @@ Menu                              |Description
 ---                               |---
 Play                              |Start all Oscillators and BufferSources
 Graph - New Graph                 |Clear current graph
-Graph - Export as JavaScript file |Export as simple JavaScript code (currently knobs are not supported)
+Graph - Export as JavaScript file |Export as simple JavaScript code
 Graph - Link to this graph        |Display a URL that contain current graph
 Add Node - (Node type)            |Add specified node
 Add Knob                          |Add knobs that controls parameter values

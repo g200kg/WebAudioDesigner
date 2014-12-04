@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+</head>
+<body>
+<script>
+//WebAudioDesigner Data:[{"type":"destination","name":"destination","x":584,"y":157,"params":[],"connect":[]},{"type":"strmsrc","name":"strmsrc1","x":322,"y":284,"params":[],"connect":[{"t":"destination","o":0,"i":0}]}]
+
+function AudioEngine(audioctx,destination){
+  this.SetupStream=function(){
+    navigator.getUserMedia=(navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia);
+    if(navigator.getUserMedia){
+      navigator.getUserMedia(
+        {audio:true},
+        function(strm){
+          this.strm=strm;
+          this.strmsrc1 = this.audioctx.createMediaStreamSource(this.strm);
+        }.bind(this),
+        function(err){
+          alert('getUserMedia Error.');
+        }.bind(this)
+      );
+    }
+    else{
+      alert('getUserMedia() not supported.');
+    }
+  };
+  this.audioctx = audioctx;
+  if(!audioctx){
+     AudioContext = window.AudioContext||window.webkitAudioContext;
+     this.audioctx = new AudioContext();
+  }
+  if(!destination)
+    this.destination=this.audioctx.destination;
+  this.SetupStream();
+  this.start=function(){
+    this.strmsrc1.connect(this.destination,0);
+  };
+}
+window.addEventListener('load',function(){audioengine=new AudioEngine()});
+</script>
+<button onclick='audioengine.start()'>Start</button><br/>
+</body>
+</html>

@@ -163,11 +163,11 @@ button {
 #jsfile{
   position:absolute;
   display:block;
-  top:5%;
-  left:5%;
+  top:25%;
+  left:3%;
   background:#ffd;
-  width:90%;
-  height:90%;
+  width:94%;
+  height:70%;
   font-family:Verdana,sans-serif;
   font-size:10px;
   font-weight:normal;
@@ -206,6 +206,15 @@ button {
   left:160px;
   width:140px;
   height:20px;
+}
+#files{
+  position:absolute;
+  display:block;
+  top:30px;
+  left:10px;
+  width:70%;
+  background:#cc8;
+  padding:4px;
 }
 canvas{
   cursor:default;
@@ -289,6 +298,7 @@ webaudio-knob{
     <div id="jspane">
       <button class="panebutton1" id="jsclose">Close</button>
       <a class="panebutton2" id="jsdownload" style="color:#fff">Download</a>
+      <div id="files"></div>
       <textarea id="jsfile" spellcheck="false"></textarea>
     </div>
     <div id="urlpane">
