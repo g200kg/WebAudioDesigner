@@ -670,12 +670,17 @@ Param.prototype.Redraw=function(ctx,bx,by){
     ctx.strokeStyle="#8e8";
     ctx.fillStyle="#335";
     ctx.fillRect(bx+this.x+60,by+this.y+40-32,64,64);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx+this.x+60,by+this.y+40-32,64,64);
+    ctx.clip();
     ctx.beginPath();
     ctx.moveTo(bx+this.x+60,by+this.y+40-c[0]*32);
     for(var i=0;i<c.length;++i){
       ctx.lineTo(bx+this.x+(i/(c.length-1))*64+60,by+this.y+40-c[i]*32);
     }
     ctx.stroke();
+    ctx.restore();
     break;
   case "ts":
     ctx.fillText(" = function(){...}",bx+this.x+4,by+this.y+14+20);
