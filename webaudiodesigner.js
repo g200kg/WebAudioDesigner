@@ -32,30 +32,117 @@ function LoadBuffers(actx,list){
   return buf;
 }
 
-function ExportJs(json){
+function ExportJs(o){
   function SetupParams(node,indent){
     var js="";
-    for(var j=0;j<node.params.length;++j){
+    function ptype(ntype,name){
+      switch(ntype){
+      case "gai":
+        switch(name){
+        case "gain": return "a";
+        }
+        break;
+      case "del":
+        switch(name){
+        case "delayTime": return "a";
+        }
+        break;
+      case "buf":
+        switch(name){
+        case "buffer": return "ob";
+        case "playbackRate": return "a";
+        case "loop": return "b";
+        case "loopStart": return "n";
+        case "loopEnd": return "n";
+        }
+        break;
+      case "scr":
+        switch(name){
+        case "onaudioprocess": return "ts";
+        }
+        break;
+      case "pan":
+        switch(name){
+        case "panningModel": return "s";
+        case "distanceModel": return "s";
+        case "refDistance": return "n";
+        case "maxDistance": return "n";
+        case "rolloffFactor": return "n";
+        case "coneInnerAngle": return "n";
+        case "coneOuterAngle": return "n";
+        case "coneOuterGain": return "n";
+        }
+        break;
+      case "con":
+        switch(name){
+        case "buffer": return "ob";
+        case "normalize": return "b";
+        }
+        break;
+      case "ana":
+        switch(name){
+        case "fftSize": return "n";
+        case "minDecibels": return "n";
+        case "maxDecibels": return "n";
+        case "smoothingTimeConstant": return "n";
+        }
+        break;
+      case "com":
+        switch(name){
+        case "threshold": return "a";
+        case "knee": return "a";
+        case "ratio": return "a";
+        case "attack": return "a";
+        case "release": return "a";
+        }
+        break;
+      case "fil":
+        switch(name){
+        case "type": return "s";
+        case "frequency": return "a";
+        case "detune": return "a";
+        case "Q": return "a";
+        case "gain": return "a";
+        }
+        break;
+      case "sha":
+        switch(name){
+        case "curve": return "tc";
+        case "oversample": return "b";
+        }
+        break;
+      case "osc":
+        switch(name){
+        case "type": return "s";
+        case "frequency": return "a";
+        case "detune": return "a";
+        }
+        break;
+      }
+      return null;
+    }
+    for(var j in node.params){
       var p=node.params[j];
       var sp="      ".substr(0,indent);
-      switch(p.type){
+      var pt=ptype(node.type,j);
+      switch(pt){
       case "s":
-        js+=sp+"this."+node.name+"."+p.name+" = \""+p.value+"\";\n";
+        js+=sp+"this."+node.name+"."+j+" = \""+p+"\";\n";
         break;
       case "n":
-        js+=sp+"this."+node.name+"."+p.name+" = "+p.value+";\n";
+        js+=sp+"this."+node.name+"."+j+" = "+p+";\n";
         break;
       case "a":
-        js+=sp+"this."+node.name+"."+p.name+".value = "+p.value+";\n";
+        js+=sp+"this."+node.name+"."+j+".value = "+p+";\n";
         break;
       case "tc":
-        js+=sp+"this."+node.name+"."+p.name+" = "+p.value+";\n";
+        js+=sp+"this."+node.name+"."+j+" = "+p+";\n";
         break;
       case "ts":
-        js+=sp+"this."+node.name+"."+p.name+" = \n"+p.value+";\n";
+        js+=sp+"this."+node.name+"."+j+" = \n"+p+";\n";
         break;
       case "ob":
-        js+=sp+"this."+node.name+"."+p.name+" = this.buffers['"+p.value+"'].data;\n";
+        js+=sp+"this."+node.name+"."+j+" = this.buffers['"+p+"'].data;\n";
         break;
       }
     }
@@ -63,40 +150,45 @@ function ExportJs(json){
   }
   function Connect(node,indent,mode){
     var c=node.connect;
-    if(node.type!="knob"){
+    if(c&&node.type!="kno"){
       for(j=0;j<c.length;++j){
         var m=(c[j].t.substr(0,3)=="osc"||c[j].t.substr(0,6)=="bufsrc");
         if(mode==m){
-          if(c[j].i)
-            js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+","+c[j].o+","+c[j].i+");\n";
-          else
-            js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+","+c[j].o+");\n";
+          if(c[j].i){
+            if(c[j].o)
+              js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+","+c[j].o+","+c[j].i+");\n";
+            else
+              js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+",0,"+c[j].i+");\n";
+          }
+          else{
+            if(c[j].o)
+              js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+","+c[j].o+");\n";
+            else
+              js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+c[j].t+");\n";
+          }
         }
       }
     }
   }
   var files=[];
-  var obj=eval(json);
   var bufs=[];
   var usestrm=false;
   var useknob=false;
+  var obj=o.o;
+  var str=o.s;
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
     if(!o.type) o.type=o.t;
     if(!o.name) o.name=o.n;
     if(!o.params) o.params=o.p;
     if(!o.connect) o.connect=o.c;
-    if(o.type=="strmsrc")
+    o.type=o.n.substr(0,3);
+    if(o.type=="str")
       usestrm=true;
-    if(o.type=="knob")
+    if(o.type=="kno")
       useknob=true;
-    if(o.type=="bufsrc"||o.type=="conv"){
-      for(var j=0;j<o.params.length;++j){
-        var p=o.params[j];
-        if(p.name=="buffer"){
-          bufs.push(p.value);
-        }
-      }
+    if(o.type=="buf"||o.type=="con"){
+      bufs.push(o.params["buffer"]);
     }
   }
   var js="<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n<body>\n";
@@ -112,7 +204,7 @@ function ExportJs(json){
       +"<link rel=\"import\" href=\"webcomponents/controls.html\">\n"
       +"<style>\nwebaudio-knob{margin:10px;}\n</style>\n";
   }
-  js+="<script>\n//WebAudioDesigner Data:"+json+"\n\n";
+  js+="<script>\n//WebAudioDesigner Data:"+str+"\n\n";
   if(bufs.length){
     js+="// (BufferSource) or (Convolver) is used. You should place \n"
       +"// audio files to samples folder. * Note that the IR files are not MIT licensed.\n"
@@ -188,65 +280,66 @@ function ExportJs(json){
     js+="  this.buffers = LoadBuffers(this.audioctx,sampleurl);\n";
   for(var i=1;i<obj.length;++i){
     var o=obj[i];
+    o.type=o.n.substr(0,3);
     switch(o.type){
-    case "strmsrc":
+    case "str":
       break;
-    case "elemsrc":
+    case "ele":
       js+="  this."+o.name+" = this.audioctx.createMediaElementSource(document.getElementById(\""+o.name+"\"));\n";
       break;
-    case "gain":
+    case "gai":
       js+="  this."+o.name+" = this.audioctx.createGain();\n";
       js+=SetupParams(o,2);
       break;
-    case "filt":
+    case "fil":
       js+="  this."+o.name+" = this.audioctx.createBiquadFilter();\n";
       js+=SetupParams(o,2);
       break;
-    case "delay":
+    case "del":
       js+="  this."+o.name+" = this.audioctx.createDelay();\n";
       js+=SetupParams(o,2);
       break;
-    case "panner":
+    case "pan":
       js+="  this."+o.name+" = this.audioctx.createPanner();\n";
       js+=SetupParams(o,2);
       break;
-    case "comp":
+    case "com":
       js+="  this."+o.name+" = this.audioctx.createDynamicsCompressor();\n";
       js+=SetupParams(o,2);
       break;
-    case "shaper":
+    case "sha":
       js+="  this."+o.name+" = this.audioctx.createWaveShaper();\n";
       js+=SetupParams(o,2);
       break;
-    case "conv":
+    case "con":
       js+="  this."+o.name+" = this.audioctx.createConvolver();\n";
       js+=SetupParams(o,2);
       break;
-    case "scrproc":
+    case "scr":
       js+="  this."+o.name+" = this.audioctx.createScriptProcessor();\n";
       js+=SetupParams(o,2);
       break;
-    case "analys":
+    case "ana":
       js+="  this."+o.name+" = this.audioctx.createAnalyser();\n";
       js+=SetupParams(o,2);
       break;
-    case "split":
+    case "spl":
       js+="  this."+o.name+" = this.audioctx.createChannelSplitter();\n";
       break;
-    case "merge":
+    case "mer":
       js+="  this."+o.name+" = this.audioctx.createChannelMerger();\n";
       break;
     }
   }
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
-    if(o.type!="osc"&&o.type!="bufsrc"&&o.type!="strmsrc"){
+    if(o.type!="osc"&&o.type!="buf"&&o.type!="str"){
       Connect(o,2,false);
     }
   }
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
-    if(o.type=="knob"){
+    if(o.type=="kno"){
       js+="  document.getElementById('"+o.name+"').addEventListener('change',function(e){\n";
       for(var j=0;j<o.connect.length;++j){
         var c=o.connect[j];
@@ -266,7 +359,7 @@ function ExportJs(json){
       js+="    this."+o.name+" = this.audioctx.createOscillator();\n";
       js+=SetupParams(o,4);
     }
-    if(o.type=="bufsrc"){
+    if(o.type=="buf"){
       js+="    this."+o.name+" = this.audioctx.createBufferSource();\n";
       js+=SetupParams(o,4);
     }
@@ -274,12 +367,12 @@ function ExportJs(json){
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
     Connect(o,4,true);
-    if(o.type=="osc"||o.type=="bufsrc"||o.type=="strmsrc")
+    if(o.type=="osc"||o.type=="buf"||o.type=="str")
       Connect(o,4,false);
   }
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
-    if(o.type=="osc"||o.type=="bufsrc")
+    if(o.type=="osc"||o.type=="buf")
       js+="    this."+o.name+".start(0);\n";
   }
   js+="  };\n}\n";
@@ -287,13 +380,13 @@ function ExportJs(json){
   js+="</script>\n<button onclick='audioengine.start()'>Start</button><br/>\n";
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
-    if(o.type=="knob"){
+    if(o.type=="kno"){
       js+="<webaudio-knob id=\""+o.name+"\" diameter=\"32\" min=\""+o.min+"\" max=\""+o.max+"\" step=\""+o.step+"\" value=\""+o.value+"\"></webaudio-knob>\n";
     }
   }
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
-    if(o.type=="elemsrc"){
+    if(o.type=="ele"){
       js+="<audio id=\""+o.name+"\" src=\""+o.params[0].value+"\" controls></audio>\n";
     }
   }
@@ -1246,13 +1339,13 @@ function Graph(canvas,actx,dest){
           var p=n.connect[j];
           contab.push({"t":p.t.parent.name+"."+p.t.name});
         }
-        o.push({"type":"knob","name":n.name,"x":n.x,"y":n.y,"min":n.min,"max":n.max,"step":n.step,"value":n.value,"connect":contab});
+        o.push({"n":n.name,"x":n.x,"y":n.y,"min":n.min,"max":n.max,"step":n.step,"value":n.value,"c":contab});
       }
     }
     var s=JSON.stringify(o);
     s=s.replace(/\"(.)\":/g,"$1:");
     s=s.replace(/\"/g,"'");
-    return s;
+    return {"o":o,"s":s};
   };
   this.Play=function(){
     this.playing=false;
@@ -1306,7 +1399,7 @@ function Graph(canvas,actx,dest){
     document.getElementById("aboutclose").onclick=function(){document.getElementById("aboutpane").style.display="none";};
   };
   this.Link=function(){
-    var o=this.GetJson();
+    var o=this.GetJson().s;
     var url=(location.protocol+"//"+location.host+location.pathname+"?p="+encodeURI(o));
     document.getElementById("aboutpane").style.display="none";
     document.getElementById("jspane").style.display="none";
@@ -1316,8 +1409,7 @@ function Graph(canvas,actx,dest){
     document.getElementById("urljump").onclick=function(){location.href=document.getElementById("url").value;};
   };
   this.Export=function(){
-    var o=this.GetJson();
-    ExportJs(o);
+    ExportJs(this.GetJson());
   };
   this.Load=function(obj){
     this.New();
