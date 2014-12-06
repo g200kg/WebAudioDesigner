@@ -1202,13 +1202,20 @@ function Graph(canvas,actx,dest){
     var o=[];
     for(var i=0;i<this.child.length;++i){
       var n=this.child[i];
-      var paramtab=[];
+//      var paramtab=[];
+      var paramtab={};
       var contab=[];
       if(n.type=="node"){
         for(var j=0;j<n.params.length;++j){
           var p=n.params[j];
-          if(p.value!=p.defval)
-            paramtab.push({n:p.name,t:p.subtype,v:p.value});
+          if(p.value!=p.defval){
+            if(p.subtype=="n"||p.subtype=="a")
+              paramtab[p.name]=parseFloat(p.value);
+//              paramtab.push({n:p.name,t:p.subtype,v:parseFloat(p.value)});
+            else
+              paramtab[p.name]=p.value;
+//              paramtab.push({n:p.name,t:p.subtype,v:p.value});
+          }
         }
         for(var j=0;j<n.connect.length;++j){
           var p=n.connect[j];
@@ -1224,7 +1231,8 @@ function Graph(canvas,actx,dest){
             contab.push(oo);
           }
         }
-        o.push({"t":n.subtype,"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
+//        o.push({"t":n.subtype,"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
+        o.push({"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
       }
       else if(n.type=="knob"){
         for(var j=0;j<n.connect.length;++j){
@@ -1236,6 +1244,7 @@ function Graph(canvas,actx,dest){
     }
     var s=JSON.stringify(o);
     s=s.replace(/\"(.)\":/g,"$1:");
+    s=s.replace(/\"/g,"'");
     return s;
   };
   this.Play=function(){
@@ -1313,19 +1322,36 @@ function Graph(canvas,actx,dest){
       if(!o.name) o.name=o.n;
       if(!o.params) o.params=o.p;
       if(!o.connect) o.connect=o.c;
+      if(!o.type){
+        var n;
+        for(n=o.name.length-1;n>=0;--n)
+          if(!(o.name[n]>="0"&&o.name[n]<="9"))
+            break;
+        o.type=o.name.substring(0,n+1);
+      }
       if(o.type=="knob"){
         o.n=graph.AddKnob(o.x,o.y,o.min,o.max,o.step,o.value);
       }
       else{
         o.n=graph.AddNode(o.type,o.name,o.x,o.y);
-        for(var j=0;j<o.params.length;++j){
-          var p=o.params[j];
-          if(!p.name) p.name=p.n;
-          if(!p.type) p.type=p.t;
-          if(!p.value) p.value=p.v;
-          for(var k=0;k<o.n.params.length;++k){
-            if(o.n.params[k].name==o.params[j].name)
-              o.n.params[k].Set(o.params[j].value);
+        if(Array.isArray(o.params)){
+          for(var j=0;j<o.params.length;++j){
+            var p=o.params[j];
+            if(!p.name) p.name=p.n;
+            if(!p.type) p.type=p.t;
+            if(!p.value) p.value=p.v;
+            for(var k=0;k<o.n.params.length;++k){
+              if(o.n.params[k].name==o.params[j].name)
+                o.n.params[k].Set(o.params[j].value);
+            }
+          }
+        }
+        else{
+          for(var j in o.params){
+            for(var k=0;k<o.n.params.length;++k){
+              if(o.n.params[k].name==j)
+                o.n.params[k].Set(o.params[j]);
+            }
           }
         }
       }
@@ -1653,7 +1679,7 @@ function Graph(canvas,actx,dest){
   this.GetNextName=function(type){
     var n=1;
     for(;;){
-      var nam=type+n;
+      var nam=type+"_"+n;
       for(var i=0;i<this.child.length;++i){
         if(nam==this.child[i].name){
           break;
