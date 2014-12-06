@@ -1325,7 +1325,7 @@ function Graph(canvas,actx,dest){
       if(!o.type){
         var n;
         for(n=o.name.length-1;n>=0;--n)
-          if(!(o.name[n]>="0"&&o.name[n]<="9"))
+          if(!(o.name[n]=="_"||(o.name[n]>="0"&&o.name[n]<="9")))
             break;
         o.type=o.name.substring(0,n+1);
       }
@@ -1679,7 +1679,7 @@ function Graph(canvas,actx,dest){
   this.GetNextName=function(type){
     var n=1;
     for(;;){
-      var nam=type+"_"+n;
+      var nam=type+n;
       for(var i=0;i<this.child.length;++i){
         if(nam==this.child[i].name){
           break;
