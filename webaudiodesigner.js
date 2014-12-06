@@ -387,7 +387,7 @@ function ExportJs(o){
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
     if(o.type=="ele"){
-      js+="<audio id=\""+o.name+"\" src=\""+o.params[0].value+"\" controls></audio>\n";
+      js+="<audio id=\""+o.n+"\" src=\""+o.params.url+"\" controls></audio>\n";
     }
   }
   js+="</body>\n</html>\n";
@@ -1302,7 +1302,6 @@ function Graph(canvas,actx,dest){
     var o=[];
     for(var i=0;i<this.child.length;++i){
       var n=this.child[i];
-//      var paramtab=[];
       var paramtab={};
       var contab=[];
       if(n.type=="node"){
@@ -1311,10 +1310,8 @@ function Graph(canvas,actx,dest){
           if(p.value!=p.defval){
             if(p.subtype=="n"||p.subtype=="a")
               paramtab[p.name]=parseFloat(p.value);
-//              paramtab.push({n:p.name,t:p.subtype,v:parseFloat(p.value)});
             else
               paramtab[p.name]=p.value;
-//              paramtab.push({n:p.name,t:p.subtype,v:p.value});
           }
         }
         for(var j=0;j<n.connect.length;++j){
@@ -1331,7 +1328,6 @@ function Graph(canvas,actx,dest){
             contab.push(oo);
           }
         }
-//        o.push({"t":n.subtype,"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
         o.push({"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
       }
       else if(n.type=="knob"){
