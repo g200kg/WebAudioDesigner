@@ -1152,8 +1152,10 @@ ANode.prototype.Connect=function(target,o,i){
   this.connect.push({"t":target,"o":o,"i":i});
   if(target.type=="param")
     this.node.connect(target.parent.node[target.name],o);
-  else
-    this.node.connect(target.node,o,i);
+  else{
+    if(this.node)
+      this.node.connect(target.node,o,i);
+  }
 };
 ANode.prototype.Move=function(x,y){
   this.x=x,this.y=y;
