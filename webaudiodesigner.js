@@ -82,6 +82,10 @@ function ExportJs(json){
   var useknob=false;
   for(var i=0;i<obj.length;++i){
     var o=obj[i];
+    if(!o.type) o.type=o.t;
+    if(!o.name) o.name=o.n;
+    if(!o.params) o.params=o.p;
+    if(!o.connect) o.connect=o.c;
     if(o.type=="strmsrc")
       usestrm=true;
     if(o.type=="knob")
@@ -381,6 +385,7 @@ function KnobParam(parent,x,y,w,h){
 KnobParam.prototype=new Widget();
 KnobParam.prototype.Edit=function(){
   graph.inputfocus=this;
+  graph.text.value="min:"+this.parent.min+"\nmax:"+this.parent.max+"\nstep:"+this.parent.step+"\nvalue:"+this.parent.value;
   graph.text.onchange=function(e){
     this.Set(e.target.value);
   }.bind(this);
@@ -403,7 +408,6 @@ KnobParam.prototype.Redraw=function(ctx){
   ctx.fillText("step:"+this.parent.step,p.x+5,p.y+38);
   ctx.fillText("value:"+this.parent.value,p.x+5,p.y+50);
   if(graph.inputfocus==this){
-    graph.text.value="min:"+this.parent.min+"\nmax:"+this.parent.max+"\nstep:"+this.parent.step+"\nvalue:"+this.parent.value;
     graph.text.style.left=(p.x)+"px";
     graph.text.style.top=(p.y)+"px";
     graph.text.style.width=this.w+"px";
@@ -413,6 +417,43 @@ KnobParam.prototype.Redraw=function(ctx){
     graph.select.style.display="none";
     graph.urlinput.style.display="none";
   }
+};
+function Keyboard(parent,name,x,y){
+  this.x=x,this.y=y;this.w=320,this.h=102,this.name=name;
+  this.elem=document.createElement("div");
+  this.elem.setAttribute("class","keyboardpane");
+  this.elem.style.left=(x+1)+"px";
+  this.elem.style.top=(y+40)+"px";
+  document.getElementById("base").insertBefore(this.elem,document.getElementById("insertpoint"));
+  this.elem.keyboard=this;
+  this.parent=parent;
+  this.type="keyb";
+  this.connect=[];
+  this.child=[new Connector(this,"cv","u",40,0),new Connector(this,"gate","u",80,0)];
+  this.buttons={"node":new Button("node",this,3,3,14,14)};
+  parent.child.push(this);
+  this.UpdateKeyboard();
+}
+Keyboard.prototype=new Widget();
+Keyboard.prototype.Redraw=function(ctx){
+  this.child[0].Redraw(ctx,this.x,this.y);
+  this.child[1].Redraw(ctx,this.x,this.y);
+  var g=ctx.createLinearGradient(this.x,this.y,this.x,this.y+20);
+  ctx.fillStyle="#000";
+  ctx.fillRect(this.x,this.y,this.w,this.h);
+  g.addColorStop(0,"#dfa");
+  g.addColorStop(1,"#bc7");
+  ctx.fillStyle=g;
+  ctx.fillRect(this.x+1,this.y+1,this.w-2,18);
+  this.buttons["node"].Redraw(ctx,this.x,this.y);
+};
+Keyboard.prototype.Move=function(x,y){
+  this.x=x,this.y=y;
+  this.elem.style.left=(this.x+1)+"px";
+  this.elem.style.top=(this.y+40)+"px";
+};
+Keyboard.prototype.UpdateKeyboard=function(){
+  this.elem.innerHTML="<webaudio-keyboard width='318' height='60'></webaudio-keyboard>";
 };
 function Knob(parent,name,x,y,min,max,step,value){
   this.x=x,this.y=y,this.w=70,this.h=64+20*3,this.name=name,this.min=min,this.max=max,this.step=step,this.value=value;
@@ -533,8 +574,8 @@ Io.prototype.Redraw=function(ctx,bx,by){
   ctx.fillText(this.name,bx+this.x+4,by+this.y+13);
 };
 
-function Param(parent,x,y,w,h,tx,ty,subtype,option,name){
-  this.x=x,this.y=y,this.w=w,this.h=h,this.tx=tx,this.ty=ty;
+function Param(parent,x,y,w,h,tx,ty,subtype,option,name,defval){
+  this.x=x,this.y=y,this.w=w,this.h=h,this.tx=tx,this.ty=ty,this.defval=defval;
   this.name=name;
   this.parent=parent;
   parent.child.push(this);
@@ -617,12 +658,12 @@ Param.prototype.Redraw=function(ctx,bx,by){
   else{
     var g=ctx.createLinearGradient(0,by+this.y,0,by+this.y+this.h);
     g.addColorStop(0,"#eef");
-    g.addColorStop(1,"#bbc");
+    g.addColorStop(1,"#aac");
   }
   ctx.fillStyle=g;
   ctx.fillRect(bx+this.x+1,by+this.y+1,this.w-2,this.h-1);
   ctx.fillStyle="#000";
-  ctx.fillText(this.name,bx+this.x+4,by+this.y+14);
+  ctx.fillText(this.name+((this.value!=this.defval)?"*":""),bx+this.x+4,by+this.y+14);
   switch(this.subtype){
   case "tc":
     var c=this.parent.node.curve;
@@ -865,11 +906,11 @@ function ANode(parent,name,subtype,x,y){
     this.io=[new Io("out",this,this.w-50,20,0)];
     this.node=actx.createBufferSource();
     this.params=[
-      new Param(this,0,40,this.w,20,90,0,"a",null,"playbackRate"),
-      new Param(this,0,60,this.w,20,90,0,"b",null,"loop"),
-      new Param(this,0,80,this.w,20,90,0,"n",null,"loopStart"),
-      new Param(this,0,100,this.w,20,90,0,"n",null,"loopEnd"),
-      new Param(this,0,120,this.w,20,60,0,"ob",["loop.wav","rhythm.wav","voice.mp3","snare.wav"],"buffer"),
+      new Param(this,0,40,this.w,20,90,0,"a",null,"playbackRate",1),
+      new Param(this,0,60,this.w,20,90,0,"b",null,"loop",false),
+      new Param(this,0,80,this.w,20,90,0,"n",null,"loopStart",0),
+      new Param(this,0,100,this.w,20,90,0,"n",null,"loopEnd",0),
+      new Param(this,0,120,this.w,20,60,0,"ob",["loop.wav","rhythm.wav","voice.mp3","snare.wav"],"buffer",null),
     ]
     this.buttons={"play":new Button("play",this,20,24,20,14),"node":new Button("node",this,3,3,14,14)};
     break;
@@ -880,9 +921,10 @@ function ANode(parent,name,subtype,x,y){
     this.io=[new Io("out",this,this.w-50,20,0)];
     this.node=actx.createOscillator();
     this.params=[
-      new Param(this,0,40,this.w,20,70,0,"s",["sine","square","sawtooth","triangle"],"type"),
-      new Param(this,0,60,this.w,20,70,0,"a",null,"frequency"),
-      new Param(this,0,80,this.w,20,70,0,"a",null,"detune")];
+      new Param(this,0,40,this.w,20,70,0,"s",["sine","square","sawtooth","triangle"],"type","sine"),
+      new Param(this,0,60,this.w,20,70,0,"a",null,"frequency",440),
+      new Param(this,0,80,this.w,20,70,0,"a",null,"detune",0)
+    ];
     this.buttons={"play":new Button("play",this,20,24,20,14),"node":new Button("node",this,3,3,14,14)};
     break;
   case "gain":
@@ -891,7 +933,7 @@ function ANode(parent,name,subtype,x,y){
     this.w=110;
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createGain();
-    this.params=[new Param(this,0,40,this.w,20,60,0,"a",null,"gain")];
+    this.params=[new Param(this,0,40,this.w,20,60,0,"a",null,"gain",1)];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "filt":
@@ -901,11 +943,11 @@ function ANode(parent,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createBiquadFilter();
     this.params=[
-      new Param(this,0,40,this.w,20,60,0,"s",["lowpass","highpass","bandpass","lowshelf","highshelf","peaking","notch","allpass"],"type"),
-      new Param(this,0,60,this.w,20,80,0,"a",null,"frequency"),
-      new Param(this,0,80,this.w,20,80,0,"a",null,"detune"),
-      new Param(this,0,100,this.w,20,80,0,"a",null,"Q"),
-      new Param(this,0,120,this.w,20,80,0,"a",null,"gain")
+      new Param(this,0,40,this.w,20,60,0,"s",["lowpass","highpass","bandpass","lowshelf","highshelf","peaking","notch","allpass"],"type","lowpass"),
+      new Param(this,0,60,this.w,20,80,0,"a",null,"frequency",350),
+      new Param(this,0,80,this.w,20,80,0,"a",null,"detune",0),
+      new Param(this,0,100,this.w,20,80,0,"a",null,"Q",1),
+      new Param(this,0,120,this.w,20,80,0,"a",null,"gain",0)
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -916,11 +958,11 @@ function ANode(parent,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createDynamicsCompressor();
     this.params=[
-      new Param(this,0,40,this.w,20,70,0,"a",null,"threshold"),
-      new Param(this,0,60,this.w,20,70,0,"a",null,"knee"),
-      new Param(this,0,80,this.w,20,70,0,"a",null,"ratio"),
-      new Param(this,0,100,this.w,20,70,0,"a",null,"attack"),
-      new Param(this,0,120,this.w,20,70,0,"a",null,"release"),
+      new Param(this,0,40,this.w,20,70,0,"a",null,"threshold",-24),
+      new Param(this,0,60,this.w,20,70,0,"a",null,"knee",30),
+      new Param(this,0,80,this.w,20,70,0,"a",null,"ratio",12),
+      new Param(this,0,100,this.w,20,70,0,"a",null,"attack",0.003),
+      new Param(this,0,120,this.w,20,70,0,"a",null,"release",0.25),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -930,7 +972,7 @@ function ANode(parent,name,subtype,x,y){
     this.w=120;
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createDelay();
-    this.params=[new Param(this,0,40,this.w,20,70,0,"a",null,"delayTime")];
+    this.params=[new Param(this,0,40,this.w,20,70,0,"a",null,"delayTime",0)];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
   case "panner":
@@ -940,14 +982,14 @@ function ANode(parent,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createPanner();
     this.params=[
-      new Param(this,0,40,this.w,20,95,0,"s",["equalpower","HRTF"],"panningModel"),
-      new Param(this,0,60,this.w,20,95,0,"s",["linear","inverse","exponential"],"distanceModel"),
-      new Param(this,0,80,this.w,20,110,0,"n",null,"refDistance"),
-      new Param(this,0,100,this.w,20,110,0,"n",null,"maxDistance"),
-      new Param(this,0,120,this.w,20,110,0,"n",null,"rolloffFactor"),
-      new Param(this,0,140,this.w,20,110,0,"n",null,"coneInnerAngle"),
-      new Param(this,0,160,this.w,20,110,0,"n",null,"coneOuterAngle"),
-      new Param(this,0,180,this.w,20,110,0,"n",null,"coneOuterGain")
+      new Param(this,0,40,this.w,20,95,0,"s",["equalpower","HRTF"],"panningModel","HRTF"),
+      new Param(this,0,60,this.w,20,95,0,"s",["linear","inverse","exponential"],"distanceModel","inverse"),
+      new Param(this,0,80,this.w,20,110,0,"n",null,"refDistance",1),
+      new Param(this,0,100,this.w,20,110,0,"n",null,"maxDistance",10000),
+      new Param(this,0,120,this.w,20,110,0,"n",null,"rolloffFactor",1),
+      new Param(this,0,140,this.w,20,110,0,"n",null,"coneInnerAngle",360),
+      new Param(this,0,160,this.w,20,110,0,"n",null,"coneOuterAngle",360),
+      new Param(this,0,180,this.w,20,110,0,"n",null,"coneOuterGain",0)
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -958,10 +1000,10 @@ function ANode(parent,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createAnalyser();
     this.params=[
-      new Param(this,0,40,this.w,20,150,0,"n",null,"fftSize"),
-      new Param(this,0,60,this.w,20,150,0,"n",null,"minDecibels"),
-      new Param(this,0,80,this.w,20,150,0,"n",null,"maxDecibels"),
-      new Param(this,0,100,this.w,20,150,0,"n",null,"smoothingTimeConstant")
+      new Param(this,0,40,this.w,20,150,0,"n",null,"fftSize",2048),
+      new Param(this,0,60,this.w,20,150,0,"n",null,"minDecibels",-100),
+      new Param(this,0,80,this.w,20,150,0,"n",null,"maxDecibels",-30),
+      new Param(this,0,100,this.w,20,150,0,"n",null,"smoothingTimeConstant",0.8)
     ];
     this.buttons={"mode":new Button("mode",this,60,24,65,14),"node":new Button("node",this,3,3,14,14)};
     this.buf=new Uint8Array(185);
@@ -994,8 +1036,8 @@ function ANode(parent,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createWaveShaper();
     this.params=[
-      new Param(this,0,40,this.w,20,80,0,"s",["none","2x","4x"],"oversample"),
-      new Param(this,0,60,this.w,80,170,120,"tc","new Float32Array([\n-0.5,-0.5,0,0.5,0.5\n])","curve"),
+      new Param(this,0,40,this.w,20,80,0,"s",["none","2x","4x"],"oversample","none"),
+      new Param(this,0,60,this.w,80,170,120,"tc","new Float32Array([\n-0.5,-0.5,0,0.5,0.5\n])","curve",null),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -1006,7 +1048,7 @@ function ANode(parent,name,subtype,x,y){
     this.io=[new Io("in",this,0,20,0),new Io("out",this,this.w-50,20,0)];
     this.node=actx.createConvolver();
     this.params=[
-      new Param(this,0,40,this.w,20,70,0,"b",null,"normalize"),
+      new Param(this,0,40,this.w,20,70,0,"b",null,"normalize",true),
       new Param(this,0,60,this.w,40,4,20,"ob",[
         "Five Columns Long.wav",
         "Five Columns.wav",
@@ -1018,7 +1060,7 @@ function ANode(parent,name,subtype,x,y){
         "Parking Garage.wav",
         "Rays.wav",
         "Trig Room.wav",
-        ],"buffer"),
+        ],"buffer",null),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -1039,7 +1081,7 @@ function ANode(parent,name,subtype,x,y){
         "    out0[i]=in0[i];\n"+
         "    out1[i]=in1[i];\n"+
         "  }\n"+
-        "}","onaudioprocess"),
+        "}","onaudioprocess",null),
     ];
     this.buttons={"node":new Button("node",this,3,3,14,14)};
     break;
@@ -1165,20 +1207,24 @@ function Graph(canvas,actx,dest){
       if(n.type=="node"){
         for(var j=0;j<n.params.length;++j){
           var p=n.params[j];
-          paramtab.push({"name":p.name,"type":p.subtype,"value":p.value});
+          if(p.value!=p.defval)
+            paramtab.push({n:p.name,t:p.subtype,v:p.value});
         }
         for(var j=0;j<n.connect.length;++j){
           var p=n.connect[j];
           if(p.t.type=="node"){
-            if(p.t.subtype=="destination")
-              contab.push({"t":"destination","o":p.o,"i":0});
-            else
-              contab.push({"t":p.t.name,"o":p.o,"i":p.i});
+            var oo={t:p.t.name};
+            if(p.i>0) oo.i=p.i;
+            if(p.o>0) oo.o=p.o;
+            contab.push(oo);
           }
-          else if(p.t.type=="param")
-            contab.push({"t":p.t.parent.name+"."+p.t.name,"o":p.o});
+          else if(p.t.type=="param"){
+            var oo={t:p.t.parent.name+"."+p.t.name};
+            if(p.o>0) oo.o=p.o;
+            contab.push(oo);
+          }
         }
-        o.push({"type":n.subtype,"name":n.name,"x":n.x,"y":n.y,"params":paramtab,"connect":contab});
+        o.push({"t":n.subtype,"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
       }
       else if(n.type=="knob"){
         for(var j=0;j<n.connect.length;++j){
@@ -1188,7 +1234,9 @@ function Graph(canvas,actx,dest){
         o.push({"type":"knob","name":n.name,"x":n.x,"y":n.y,"min":n.min,"max":n.max,"step":n.step,"value":n.value,"connect":contab});
       }
     }
-    return o;
+    var s=JSON.stringify(o);
+    s=s.replace(/\"(.)\":/g,"$1:");
+    return s;
   };
   this.Play=function(){
     this.playing=false;
@@ -1243,7 +1291,7 @@ function Graph(canvas,actx,dest){
   };
   this.Link=function(){
     var o=this.GetJson();
-    var url=(location.protocol+"//"+location.host+location.pathname+"?p="+encodeURI(JSON.stringify(o)));
+    var url=(location.protocol+"//"+location.host+location.pathname+"?p="+encodeURI(o));
     document.getElementById("aboutpane").style.display="none";
     document.getElementById("jspane").style.display="none";
     document.getElementById("urlpane").style.display="block";
@@ -1253,7 +1301,7 @@ function Graph(canvas,actx,dest){
   };
   this.Export=function(){
     var o=this.GetJson();
-    ExportJs(JSON.stringify(o));
+    ExportJs(o);
   };
   this.Load=function(obj){
     this.New();
@@ -1261,6 +1309,10 @@ function Graph(canvas,actx,dest){
     this.child[0].y=obj[0].y;
     for(var i=1;i<obj.length;++i){
       var o=obj[i];
+      if(!o.type) o.type=o.t;
+      if(!o.name) o.name=o.n;
+      if(!o.params) o.params=o.p;
+      if(!o.connect) o.connect=o.c;
       if(o.type=="knob"){
         o.n=graph.AddKnob(o.x,o.y,o.min,o.max,o.step,o.value);
       }
@@ -1268,6 +1320,9 @@ function Graph(canvas,actx,dest){
         o.n=graph.AddNode(o.type,o.name,o.x,o.y);
         for(var j=0;j<o.params.length;++j){
           var p=o.params[j];
+          if(!p.name) p.name=p.n;
+          if(!p.type) p.type=p.t;
+          if(!p.value) p.value=p.v;
           for(var k=0;k<o.n.params.length;++k){
             if(o.n.params[k].name==o.params[j].name)
               o.n.params[k].Set(o.params[j].value);
@@ -1364,7 +1419,7 @@ function Graph(canvas,actx,dest){
         }
       }
     }
-    if(node.type=="knob"){
+    else if(node.type=="knob"||node.type=="keyb"){
       for(var i=this.child.length-1;i>=0;--i){
         var n=this.child[i];
         if(n==node){
@@ -1478,7 +1533,7 @@ function Graph(canvas,actx,dest){
       }
     }
     return false;
-  }
+  };
   this.AddKnob=function(x,y,min,max,step,value){
     var k=new Knob(graph,this.GetNextName("knob"),x,y,min,max,step,value);
     k.elem.addEventListener("change",function(){
@@ -1488,10 +1543,18 @@ function Graph(canvas,actx,dest){
         t.t.parent.node[t.t.name].value=t.t.value=this.knob.value;
       }
       graph.Redraw();
-    })
+    });
     graph.Redraw();
     return k;
-  }
+  };
+  this.AddKeyboard=function(x,y){
+    var k=new Keyboard(graph,this.GetNextName("keyb"),x,y);
+    k.elem.addEventListener("change",function(){
+
+    });
+    graph.Redraw();
+    return k;
+  };
   this.Redraw=function(){
     this.ctx.lineWidth=2;
     this.ctx.font="bold 10px Verdana,sans-serif";
@@ -1658,7 +1721,7 @@ function MouseMove(e){
     }
   }
   if(dragging){
-    if(dragging.type=="node"||dragging.type=="knob"){
+    if(dragging.type=="node"||dragging.type=="knob"||dragging.type=="keyb"){
       dragging.Move(mouseX-draggingoffset.x,mouseY-draggingoffset.y);
       graph.Redraw();
       return;
@@ -1792,8 +1855,6 @@ function MouseUp(e){
       }
     }
   }
-//  if(dragging==null)
-//    MenuClear();
   dragging=null;
   graph.Redraw();
 }
@@ -1860,6 +1921,9 @@ function MenuClick(e){
     break;
   case "addknob":
     graph.AddKnob(500,300,0,100,1,0);
+    break;
+  case "addkeyboard":
+    graph.AddKeyboard(400,300);
     break;
   case "addosc":
   case "addbufsrc":
