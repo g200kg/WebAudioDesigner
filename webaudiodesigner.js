@@ -1396,7 +1396,8 @@ function Graph(canvas,actx,dest){
   };
   this.Link=function(){
     var o=this.GetJson().s;
-    var url=(location.protocol+"//"+location.host+location.pathname+"?p="+encodeURI(o));
+    o=encodeURIComponent(o);
+    var url=(location.protocol+"//"+location.host+location.pathname+"?p="+o);
     document.getElementById("aboutpane").style.display="none";
     document.getElementById("jspane").style.display="none";
     document.getElementById("urlpane").style.display="block";
@@ -2088,7 +2089,7 @@ function Init(){
   for(var i=0;i<vars.length;++i){
     var l=vars[i].split("=");
     if(l[0]=="p"){
-      patch=l[1];
+      patch=l[1].replace(/\+/g," ");
     }
   }
   intid=setInterval(StartIfReady,100);
@@ -2101,7 +2102,7 @@ function StartIfReady(){
 }
 function Start(){
   if(patch){
-    patch=eval(decodeURI(patch));
+    patch=eval(decodeURIComponent(patch));
     graph.Load(patch);
   }
   else
