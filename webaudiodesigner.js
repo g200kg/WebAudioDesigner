@@ -1396,7 +1396,7 @@ function Graph(canvas,actx,dest){
   };
   this.Link=function(){
     var o=this.GetJson().s;
-    o=encodeURIComponent(o);
+    o=encodeURI(o);
     var url=(location.protocol+"//"+location.host+location.pathname+"?p="+o);
     document.getElementById("aboutpane").style.display="none";
     document.getElementById("jspane").style.display="none";
@@ -2102,7 +2102,7 @@ function StartIfReady(){
 }
 function Start(){
   if(patch){
-    patch=eval(decodeURIComponent(patch));
+    patch=eval(decodeURI(patch));
     graph.Load(patch);
   }
   else
