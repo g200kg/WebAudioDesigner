@@ -150,7 +150,6 @@ function ExportJs(o){
 			}
 			return null;
 		}
-		console.log(node);
 		if(node.type=="buf"){
 			if(!node.buffer)
 				node.params.buffer="loop.wav";
@@ -671,6 +670,18 @@ function Param(parent,name,subtype,btm,x,y,w,h,vx,option,defval){
 		this.elem.appendChild(this.edit);
 		this.edit.addEventListener("change",this.Set);
 		break;
+	case "tm":
+		this.value=defval;
+		this.elem.style.background="#abf";
+		this.edit=document.createElement("input");
+		this.edit.setAttribute("class","edit");
+		this.edit.setAttribute("spellcheck",false);
+		this.edit.parent=this;
+		this.edit.setAttribute("style","margin:0px;padding:0px;left:35px;top:1px;width:240px");
+		this.value=this.edit.value=defval;
+		this.elem.appendChild(this.edit);
+		this.edit.addEventListener("change",this.Set);
+		break;
 	case "tc":
 		this.value=defval;
 		this.cv=document.createElement("canvas");
@@ -741,6 +752,9 @@ Param.prototype.Set=function(){
 		this.parent.value=this.value;
 		this.parent.parent.audio.src=this.parent.value;
 		break;
+	case "tm":
+		this.parent.value=this.value;
+		break;
 	}
 };
 Param.prototype.SetEdit=function(val,i){
@@ -779,6 +793,10 @@ Param.prototype.SetEdit=function(val,i){
 		break;
 	case "ts":
 		this.value=val;
+		break;
+	case "tm":
+		this.value=val;
+		this.edit.value=val;
 		break;
 	case "tc":
 		this.value=val;
@@ -921,6 +939,11 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 			this.io=new Io(this,0, 1,21,320,19,[{x:260,y:-21,t:"ko",d:"u",ch:0},{x:290,y:-21,t:"ko",d:"u",ch:1}]),
 			this.play=new Button(this,"playbtn",16,23),
 			this.key=this.params[0]=new Param(this,"val","key",1, 1,41,320,50,0,null,0),
+			this.params[1]=new Param(this,"mml","tm",0, 41,21,250,19,30,null,
+					"t80o4l16a8f+ga8f+ga>ab<c+def+g"+"f+8def+8>f+gabagaf+ga"+
+					"g8bag8f+ef+edef+gab"+"g8bab8<c+d>ab<c+def+ga"+
+					"f+8def+8edec+def+edc+"+"d8>b<c+d8>def+gf+ef+<dc+d"+
+					">b8<dc+>b8agagf+gab<c+d"+">b8<dc+d8c+>b<c+dedc+d>b<c+"+"d1"),
 		];
 		this.lbl1=document.createElement("div");
 		this.lbl1.setAttribute("style","position:absolute;top:0px;left:245px");
@@ -930,10 +953,6 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.lbl2.innerHTML="gate";
 		this.elem.appendChild(this.lbl1);
 		this.elem.appendChild(this.lbl2);
-		this.mmlstr="o4t80l16a8f+ga8f+ga>ab<c+def+g"+"f+8def+8>f+gabagaf+ga"+
-					"g8bag8f+ef+edef+gab"+"g8bab8<c+d>ab<c+def+ga"+
-					"f+8def+8edec+def+edc+"+"d8>b<c+d8>def+gf+ef+<dc+d"+
-					">b8<dc+>b8agagf+gab<c+d"+">b8<dc+d8c+>b<c+dedc+d>b<c+"+"d1";
 		this.Move(x,y,320,91);
 		this.node=null;
 		break;
@@ -1288,7 +1307,7 @@ ANode.prototype.Realize=function(){
 		this.SetupParam();
 	}
 	if(this.subtype=="key"){
-		this.mml=new MMLEmitter(this.actx,this.mmlstr);
+		this.mml=new MMLEmitter(this.actx,"/:"+this.params[1].edit.value+":/999",{defaultOctave:4});
 		this.mml.anode=this;
 		this.mml.tracks[0].on("note",function(e){
 			this.Note([1,e.midi]);
