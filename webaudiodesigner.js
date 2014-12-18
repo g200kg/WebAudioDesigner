@@ -61,7 +61,7 @@ function LoadBuffers(actx,list){
 	}
 	return buf;
 }
-function ExportJs(o){
+function ExportJs(wadobj){
 	function SetupParams(node,indent){
 		var js="";
 		function ptype(ntype,name){
@@ -187,7 +187,7 @@ function ExportJs(o){
 	}
 	function Connect(node,indent,mode){
 		var c=node.connect;
-		if(c&&node.type!="kno"){
+		if(c){
 			for(j=0;j<c.length;++j){
 				var n=c[j].t;
 				var co=c[j].o;
@@ -218,8 +218,10 @@ function ExportJs(o){
 	var bufs=[];
 	var usestrm=false;
 	var useknob=false;
-	var obj=o.o;
-	var str=o.s;
+	var usekey=false;
+	var usefunc=false;
+	var obj=wadobj.o;
+	var str=wadobj.s;
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
 		if(!o.type) o.type=o.t;
@@ -231,6 +233,10 @@ function ExportJs(o){
 			usestrm=true;
 		if(o.type=="kno")
 			useknob=true;
+		if(o.type=="key")
+			usekey=true;
+		if(o.type=="fun")
+			usefunc=true;
 		if(o.type=="buf"){
 			if(!o.params.buffer)
 				bufs.push("loop.wav");
@@ -245,19 +251,20 @@ function ExportJs(o){
 		}
 	}
 	var js="<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n<body>\n";
-	if(useknob){
+	if(useknob||usekey){
 		files.push("webcomponents/webcomponents.min.js");
 		files.push("webcomponents/polymer.js");
 		files.push("webcomponents/polymer.html");
 		files.push("webcomponents/layout.html");
 		files.push("webcomponents/controls.html");
-		js+="<!-- Knobs are used. You should place webcomponents.min.js / polymer.js / polymer.html / layout.html / controls.html to webcomponents folder -->\n";
+		js+="<!-- Knobs/keyboards are used. You should place webcomponents.min.js / polymer.js / polymer.html / layout.html / controls.html to webcomponents folder -->\n";
 		js+="<script src=\"webcomponents/webcomponents.min.js\"></script>\n"
 			+"<link rel=\"import\" href=\"webcomponents/polymer.html\">\n"
 			+"<link rel=\"import\" href=\"webcomponents/controls.html\">\n"
 			+"<style>\nwebaudio-knob{margin:10px;}\n</style>\n";
 	}
-	js+="<script>\n//WebAudioDesigner Data:"+str+"\n\n";
+	js+="<script src='wadengine.js'></script>\n";
+	js+="<script>\nvar waddata = "+str+"\n\n";
 	if(bufs.length){
 		js+="// (BufferSource) or (Convolver) is used. You should place \n"
 			+"// audio files to samples folder. * Note that the IR files are not MIT licensed.\n"
@@ -298,6 +305,84 @@ function ExportJs(o){
 	}
 	js+=
 	"function AudioEngine(audioctx,destination){\n";
+	if(usekey){
+		js+=
+		"  function Key(id){\n"+
+		"    this.c=[];\n"+
+		"    this.type='key';\n"+
+		"    this.elem=document.getElementById(id);\n"+
+		"    this.elem.addEventListener('change',function(e){\n"+
+		"      for(var i=this.c.length-1;i>=0;--i){\n"+
+		"        var c=this.c[i];\n"+
+		"        var x=e.note[1-c[1]];\n"+
+		"        if(c[0].set)\n"+
+		"          c[0].set(x,c[2]);\n"+
+		"        else if(typeof(c[0].value)=='number')\n"+
+		"          c[0].value=x;\n"+
+		"        else\n"+
+		"          c[0]=x;\n"+
+		"      }\n"+
+		"    }.bind(this));\n"+
+		"    this.connect=function(target,o,i){\n"+
+		"      o=o?1:0;\n"+
+		"      i=i?1:0;\n"+
+		"      this.c.push([target,o,i]);\n"+
+		"    };\n"+
+		"    this.start=function(){\n"+
+		"    };\n"+
+		"  }\n";
+	}
+	if(useknob){
+		js+=
+		"  function Knob(id){\n"+
+		"    this.c=[];\n"+
+		"    this.type='kno';\n"+
+		"    this.elem=document.getElementById(id);\n"+
+		"    this.elem.addEventListener('change',function(e){\n"+
+		"      for(var i=this.c.length-1;i>=0;--i){\n"+
+		"        var c=this.c[i];\n"+
+		"        if(c[0].set)\n"+
+		"          c[0].set(e.target.value,c[2]);\n"+
+		"        else if(typeof(c[0].value)=='number')\n"+
+		"          c[0].value=e.target.value;\n"+
+		"        else\n"+
+		"          c[0]=e.target.value;\n"+
+		"      }\n"+
+		"    }.bind(this));\n"+
+		"    this.connect=function(target,o,i){\n"+
+		"      o=o?1:0;\n"+
+		"      i=i?1:0;\n"+
+		"      this.c.push([target,o,i]);\n"+
+		"    };\n"+
+		"  }\n";
+	}
+	if(usefunc){
+		js+=
+		"  function Func(func){\n"+
+		"    this.vars=[0,0];\n"+
+		"    this.c=[];\n"+
+		"    this.func=func;\n"+
+		"    this.type='fun';\n"+
+		"    this.connect=function(target,o,i){\n"+
+		"      o=o?1:0;\n"+
+		"      i=i?1:0;\n"+
+		"      this.c.push([target,o,i]);\n"+
+		"    };\n"+
+		"    this.set=function(x,n){\n"+
+		"      this.vars[n]=x;\n"+
+		"      var y=this.func(this.vars[0],this.vars[1]);\n"+
+		"      for(var i=0;i<this.c.length;++i){\n"+
+		"        var c=this.c[i];\n"+
+		"        if(c[0].set)\n"+
+		"          c[0].set(y,c[2]);\n"+
+		"        else if(typeof(c[0].value)=='number')\n"+
+		"          c[0].value=y;\n"+
+		"        else\n"+
+		"          c[0]=y;\n"+
+		"      }\n"+
+		"    };\n"+
+		"  }\n";
+	}
 	if(usestrm){
 		js+=
 		"  this.SetupStream=function(){\n"+
@@ -382,32 +467,21 @@ function ExportJs(o){
 		case "mer":
 			js+="  this."+o.name+" = this.audioctx.createChannelMerger();\n";
 			break;
+		case "fun":
+			js+="  this."+o.name+" = new Func(function(x,y){return "+o.p.func+"});\n";
+			break;
+		case "key":
+			js+="  this."+o.name+" = new Key('"+o.name+"');\n";
+			break;
+		case "kno":
+			js+="  this."+o.name+" = new Knob('"+o.name+"');\n";
+			break;
 		}
 	}
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
 		if(o.type!="osc"&&o.type!="buf"&&o.type!="str"){
 			Connect(o,2,false);
-		}
-	}
-	for(var i=0;i<obj.length;++i){
-		var o=obj[i];
-		if(o.type=="kno"){
-			js+="  document.getElementById('"+o.name+"').addEventListener('change',function(e){\n";
-			for(var j=0;j<o.connect.length;++j){
-				var n=o.connect[j].t;
-				var co=o.connect[j].o;
-				var ci=o.connect[j].i;
-				if(!n) {
-					n=o.connect[j];
-					ci=co=0;
-				}
-				if(n.indexOf(".")>0)
-					n=n.substring(0,n.indexOf("."));
-				js+="    if(this."+n+")\n"
-					+ "      this."+n+".value=e.target.value;\n";
-			}
-			js+="  }.bind(this));\n";
 		}
 	}
 	js+="  this.start=function(){\n";
@@ -435,7 +509,9 @@ function ExportJs(o){
 	}
 	js+="  };\n}\n";
 	js+="window.addEventListener('load',function(){audioengine=new AudioEngine()});\n";
-	js+="</script>\n<button onclick='audioengine.start()'>Start</button><br/>\n";
+	js+="</script>\n<button onclick='audioengine.start()'>Play</button><br/>\n";
+//	js+="window.addEventListener('load',function(){wadengine=new WADEngine(waddata)});\n";
+//	js+="</script>\n<button onclick='wadengine.start()'>Start</button><br/>\n";
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
 		if(o.type=="kno"){
@@ -449,6 +525,9 @@ function ExportJs(o){
 			if(typeof(o.p.value)!="undefined")
 				js+=" value="+o.p.value;
 			js+="\"></webaudio-knob>\n";
+		}
+		if(o.type=="key"){
+			js+="<webaudio-keyboard id=\""+o.name+"\" min=\"48\" max=\"72\"></webaudio-keyboard>";
 		}
 	}
 	for(var i=0;i<obj.length;++i){
@@ -471,7 +550,7 @@ function ExportJs(o){
 	var link=document.getElementById("jsdownload");
 	link.setAttribute("href",bURL);
 	link.setAttribute("download","WebAudiodesigner.html");
-	var fl="Related files : ";
+	var fl="Required files : ";
 	for(var i=0;i<files.length;++i){
 		fl+=" <a href=\""+files[i]+"\">"+files[i]+"</a> ";
 	}
@@ -1701,10 +1780,6 @@ function Graph(canvas,actx,dest){
 		}
 	}
 	this.DisconnectNode=function(node){
-		if(node.subtype=="kno"||node.subtype=="key"){
-			this.DisconnectWire(node.connector[0]);
-			return;
-		}
 		node.conn.length=0;
 		if(node.node)
 			node.node.disconnect();
@@ -1731,8 +1806,9 @@ function Graph(canvas,actx,dest){
 					var c=n.conn[j];
 					if(c.t==target){
 						n.conn.splice(j,1);
-						if(n.node)
-							n.node.disconnect();
+						if(n.node){
+							n.node.disconnect(c.o.ch);
+						}
 					}
 				}
 			}
