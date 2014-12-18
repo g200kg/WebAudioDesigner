@@ -151,8 +151,8 @@ function ExportJs(wadobj){
 			return null;
 		}
 		if(node.type=="buf"){
-			if(!node.buffer)
-				node.params.buffer="loop.wav";
+//			if(!node.buffer)
+//				node.params.buffer="loop.wav";
 		}
 		if(node.type=="con"){
 			if(!node.buffer)
@@ -1508,7 +1508,7 @@ function Graph(canvas,actx,dest){
 				for(var j=0;j<n.child.length;++j){
 					var p=n.child[j];
 					if(p.type=="param"){
-						if(p.value!=p.defval){
+						if(p.value!=p.defval||p.name=="buffer"){
 							if(p.subtype=="n"||p.subtype=="a"||p.subtype=="k"||p.subtype=="kno")
 								paramtab[p.name]=parseFloat(p.value);
 							else
@@ -1542,6 +1542,8 @@ function Graph(canvas,actx,dest){
 			}
 		}
 		var s=JSON.stringify(o);
+//		s=s.replace(/\"par\"/g,"p");
+//		s=s.replace(/\"con\"/g,"c");
 		s=s.replace(/\"(.)\":/g,"$1:");
 //		s=s.replace(/\"/g,"'");
 		s=s.replace(/,p:{}/g,"");
