@@ -155,8 +155,8 @@ function ExportJs(wadobj){
 //				node.params.buffer="loop.wav";
 		}
 		if(node.type=="con"){
-			if(!node.buffer)
-				node.params.buffer="Five Columns Long.wav";
+//			if(!node.buffer)
+//				node.params.buffer="Five Columns Long.wav";
 		}
 		for(var j in node.params){
 			var p=node.params[j];
@@ -167,6 +167,7 @@ function ExportJs(wadobj){
 				js+=sp+"this."+node.name+"."+j+" = \""+p+"\";\n";
 				break;
 			case "n":
+			case "b":
 				js+=sp+"this."+node.name+"."+j+" = "+p+";\n";
 				break;
 			case "a":
@@ -239,15 +240,15 @@ function ExportJs(wadobj){
 			usefunc=true;
 		if(o.type=="buf"){
 			if(!o.params.buffer)
-				bufs.push("loop.wav");
+				bufs.push(["loop.wav","loop.wav"]);
 			else
-				bufs.push(o.params.buffer);
+				bufs.push([o.params.buffer,o.params.buffer]);
 		}
 		if(o.type=="con"){
 			if(!o.params.buffer)
-				bufs.push("Five Columns Long.wav");
+				bufs.push(["Five Columns Long.wav","ir/IMreverbs1/Five Columns Long.wav"]);
 			else
-				bufs.push(o.params.buffer);
+				bufs.push([o.params.buffer,"ir/IMreverbs1/"+o.params.buffer]);
 		}
 	}
 	var js="<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n<body>\n";
@@ -265,46 +266,46 @@ function ExportJs(wadobj){
 	}
 	js+="<script src='wadengine.js'></script>\n";
 	js+="<script>\nvar waddata = "+str+"\n\n";
-	if(bufs.length){
-		js+="// (BufferSource) or (Convolver) is used. You should place \n"
-			+"// audio files to samples folder. * Note that the IR files are not MIT licensed.\n"
-			+"// sampleurl object has the 'filename':'path to file' pairs.\n\n";
-		js+="var sampleurl={\n";
-		for(var i=0;i<bufs.length;++i){
-			js+="  '"+bufs[i]+"':'samples/"+bufs[i]+"',\n";
-			files.push("samples/"+bufs[i]);
-		}
-		js+="};\n\n";
-		js+=
-			"function LoadBuffers(actx,list){\n"+
-			"  buf={'_count':Object.keys(list).length,'_ready':false};\n"+
-			"  for(name in list){\n"+
-			"    var o=buf[name]={};\n"+
-			"    o.req=new XMLHttpRequest();\n"+
-			"    o.req.open('GET',list[name],true);\n"+
-			"    o.req.responseType='arraybuffer';\n"+
-			"    o.req.buf=buf;\n"+
-			"    o.req.nam=name;\n"+
-			"    o.req.onload=function(){\n"+
-			"      if(this.response){\n"+
-			"        actx.decodeAudioData(this.response,\n"+
-			"          function(b){\n"+
-			"            this.buf[this.nam].data=b;\n"+
-			"            if(--this.buf._count==0)\n"+
-			"              this.buf._ready=true;\n"+
-			"          }.bind(this),\n"+
-			"          function(){}\n"+
-			"        );\n"+
-			"      }\n"+
-			"    };\n"+
-			"    o.req.onerror=function(){};\n"+
-			"    try{o.req.send();} catch(e){}\n"+
-			"  }\n"+
-			"  return buf;\n"+
-			"}\n\n";
-	}
 	js+=
 	"function AudioEngine(audioctx,destination){\n";
+	if(bufs.length){
+		js+="  // (BufferSource) or (Convolver) is used. You should place \n"
+			+"  // audio files to samples folder. * Note that the IR files are not MIT licensed.\n"
+			+"  // sampleurl object has the 'filename':'path to file' pairs.\n";
+		js+="  this.sampleurl={\n";
+		for(var i=0;i<bufs.length;++i){
+			js+="    '"+bufs[i][0]+"':'samples/"+bufs[i][1]+"',\n";
+			files.push("samples/"+bufs[i][1]);
+		}
+		js+="  };\n";
+		js+=
+			"  function LoadBuffers(actx,list){\n"+
+			"    buf={'_count':Object.keys(list).length,'_ready':false};\n"+
+			"    for(name in list){\n"+
+			"      var o=buf[name]={};\n"+
+			"      o.req=new XMLHttpRequest();\n"+
+			"      o.req.open('GET',list[name],true);\n"+
+			"      o.req.responseType='arraybuffer';\n"+
+			"      o.req.buf=buf;\n"+
+			"      o.req.nam=name;\n"+
+			"      o.req.onload=function(){\n"+
+			"        if(this.response){\n"+
+			"          actx.decodeAudioData(this.response,\n"+
+			"            function(b){\n"+
+			"              this.buf[this.nam].data=b;\n"+
+			"              if(--this.buf._count==0)\n"+
+			"                this.buf._ready=true;\n"+
+			"            }.bind(this),\n"+
+			"            function(){}\n"+
+			"          );\n"+
+			"        }\n"+
+			"      };\n"+
+			"      o.req.onerror=function(){};\n"+
+			"      try{o.req.send();} catch(e){}\n"+
+			"    }\n"+
+			"    return buf;\n"+
+			"  }\n";
+	}
 	if(usekey){
 		js+=
 		"  function Key(id){\n"+
@@ -415,7 +416,8 @@ function ExportJs(wadobj){
 	if(usestrm)
 		js+="  this.SetupStream();\n";
 	if(bufs.length)
-		js+="  this.buffers = LoadBuffers(this.audioctx,sampleurl);\n";
+		js+="  this.buffers = LoadBuffers(this.audioctx,this.sampleurl);\n";
+	js+="  function build(){\n    if(!this.buffers||this.buffers._ready){clearInterval(this.poll);}\n    else return;\n";
 	for(var i=1;i<obj.length;++i){
 		var o=obj[i];
 		o.type=o.n.substr(0,3);
@@ -423,68 +425,68 @@ function ExportJs(wadobj){
 		case "str":
 			break;
 		case "ele":
-			js+="  this."+o.name+" = this.audioctx.createMediaElementSource(document.getElementById(\""+o.name+"\"));\n";
+			js+="    this."+o.name+" = this.audioctx.createMediaElementSource(document.getElementById(\""+o.name+"\"));\n";
 			break;
 		case "gai":
-			js+="  this."+o.name+" = this.audioctx.createGain();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createGain();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "fil":
-			js+="  this."+o.name+" = this.audioctx.createBiquadFilter();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createBiquadFilter();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "del":
-			js+="  this."+o.name+" = this.audioctx.createDelay();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createDelay();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "pan":
-			js+="  this."+o.name+" = this.audioctx.createPanner();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createPanner();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "com":
-			js+="  this."+o.name+" = this.audioctx.createDynamicsCompressor();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createDynamicsCompressor();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "sha":
-			js+="  this."+o.name+" = this.audioctx.createWaveShaper();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createWaveShaper();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "con":
-			js+="  this."+o.name+" = this.audioctx.createConvolver();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createConvolver();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "scr":
-			js+="  this."+o.name+" = this.audioctx.createScriptProcessor();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createScriptProcessor();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "ana":
-			js+="  this."+o.name+" = this.audioctx.createAnalyser();\n";
-			js+=SetupParams(o,2);
+			js+="    this."+o.name+" = this.audioctx.createAnalyser();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "spl":
-			js+="  this."+o.name+" = this.audioctx.createChannelSplitter();\n";
+			js+="    this."+o.name+" = this.audioctx.createChannelSplitter();\n";
 			break;
 		case "mer":
-			js+="  this."+o.name+" = this.audioctx.createChannelMerger();\n";
+			js+="    this."+o.name+" = this.audioctx.createChannelMerger();\n";
 			break;
 		case "fun":
-			js+="  this."+o.name+" = new Func(function(x,y){return "+o.p.func+"});\n";
+			js+="    this."+o.name+" = new Func(function(x,y){return "+o.p.func+"});\n";
 			break;
 		case "key":
-			js+="  this."+o.name+" = new Key('"+o.name+"');\n";
+			js+="    this."+o.name+" = new Key('"+o.name+"');\n";
 			break;
 		case "kno":
-			js+="  this."+o.name+" = new Knob('"+o.name+"');\n";
+			js+="    this."+o.name+" = new Knob('"+o.name+"');\n";
 			break;
 		}
 	}
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
 		if(o.type!="osc"&&o.type!="buf"&&o.type!="str"){
-			Connect(o,2,false);
+			Connect(o,4,false);
 		}
 	}
-	js+="  this.start=function(){\n";
+	js+="  }\n  this.start=function(){\n";
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
 		if(o.type=="osc"){
@@ -500,14 +502,16 @@ function ExportJs(wadobj){
 		var o=obj[i];
 		Connect(o,4,true);
 		if(o.type=="osc"||o.type=="buf"||o.type=="str")
-			Connect(o,4,false);
+			Connect(o,6,false);
 	}
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
 		if(o.type=="osc"||o.type=="buf")
 			js+="    this."+o.name+".start(0);\n";
 	}
-	js+="  };\n}\n";
+	js+="  };\n";
+	js+="  this.poll=setInterval(build.bind(this),100);\n"
+	js+="}\n";
 	js+="window.addEventListener('load',function(){audioengine=new AudioEngine()});\n";
 	js+="</script>\n<button onclick='audioengine.start()'>Play</button><br/>\n";
 //	js+="window.addEventListener('load',function(){wadengine=new WADEngine(waddata)});\n";
@@ -641,13 +645,16 @@ Io.prototype.SetEdit=function(val,ch){
 	}
 }
 
-function Param(parent,name,subtype,btm,x,y,w,h,vx,option,defval){
+function Param(parent,name,subtype,btm,x,y,w,h,vx,option,defval,tooltip){
 	this.parent=parent,this.name=name,this.subtype=subtype,this.x=x,this.y=y,this.w=w,this.h=h;
 	this.defval=this.value=defval;
 	this.child=[];
 	this.type="param";
 	this.elem=document.createElement("div");
 	this.elem.setAttribute("class","param");
+	this.tooltip=document.createElement("div");
+	this.tooltip.setAttribute("class","tooltip");
+	this.tooltip.innerHTML=tooltip;
 	this.elem.style.left=this.x+"px";
 	this.elem.style.top=this.y+"px";
 	this.elem.style.width=(this.w-4)+"px";
@@ -776,6 +783,8 @@ function Param(parent,name,subtype,btm,x,y,w,h,vx,option,defval){
 		this.value=defval;
 		break;
 	}
+	if(tooltip)
+		this.elem.appendChild(this.tooltip);
 	parent.elem.appendChild(this.elem);
 }
 Param.prototype.HitTest=HitTest;
@@ -786,6 +795,7 @@ Param.prototype.Set=function(){
 		this.parent.value=this.value;
 		if(this.parent.parent.node&&!isNaN(this.parent.value)){
 			this.parent.parent.node[this.parent.name].value=this.parent.value;
+//			this.parent.parent.node[this.parent.name].setValueAtTime(this.parent.value,graph.actx.currentTime);
 		}
 		break;
 	case "n":
@@ -976,7 +986,7 @@ TitleBar.prototype.GetPos=GetPos;
 function ANode(parent,subtype,name,x,y,actx,dest){
 	var namtab={des:"destination",osc:"osc",buf:"bufsrc",str:"strmsrc",ele:"elemsrc",gai:"gain",del:"delay",pan:"panner",
 		scr:"scrproc",fil:"filter",com:"comp",sha:"shaper",con:"conv",ana:"analys",spl:"split",mer:"merge",
-		fun:"func",kno:"knob",key:"keyboard",seq:"sequencer"};
+		fun:"func",kno:"knob",key:"keyboard",aut:"automation",seq:"sequencer"};
 	this.parent=parent;
 	this.type="node";
 	this.actx=actx;
@@ -1010,6 +1020,15 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.cv.setAttribute("width",160);
 		this.elem.appendChild(this.cv);
 		this.Move(x,y,320,200);
+		this.node=null;
+		break;
+	case "aut":
+		this.child=[
+			new TitleBar(this,this.name,1,1,188,19),
+			this.io=new Io(this,0,0,0,0,0,[{x:100,y:0,t:"ko",d:"u",ch:0}]),
+			this.params[0]=new Param(this,"onTrig","tf",0, 1,21,188,39,5,null,"440*Math.pow(2,(x+y-69)/12)"),
+		];
+		this.Move(x,y,190,120);
 		this.node=null;
 		break;
 	case "key":
@@ -1078,9 +1097,9 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 			new TitleBar(this,this.name,1,1,128,19),
 			this.io=new Io(this,0, 1,21,128,19,[{x:128,y:10,t:"so",d:"r",ch:0}]),
 			this.play=new Button(this,"playbtn",16,23),
-			new Param(this,"type","s",0, 1,41,128,19,50,["sine","square","sawtooth","triangle"],"sine"),
-			new Param(this,"frequency","a",0, 1,61,128,19,65,null,440),
-			new Param(this,"detune","a",1, 1,81,128,19,65,null,0),
+			this.params[0]=new Param(this,"type","s",0, 1,41,128,19,50,["sine","square","sawtooth","triangle"],"sine","Shape of waveform"),
+			this.params[1]=new Param(this,"frequency","a",0, 1,61,128,19,65,null,440,"Frequency in Hz"),
+			this.params[2]=new Param(this,"detune","a",1, 1,81,128,19,65,null,0,"Frequency offset in Cent"),
 		];
 		this.Move(x,y,130,101);
 		this.node=null;
@@ -1090,11 +1109,11 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 			new TitleBar(this,this.name,1,1,158,19),
 			this.io=new Io(this,0, 1,21,158,19,[{x:158,y:10,t:"so",d:"r",ch:0}]),
 			this.play=new Button(this,"playbtn",16,23),
-			this.params[0]=new Param(this,"playbackRate","a",0, 1,41,158,19,90,null,1),
-			this.params[1]=new Param(this,"loop","b",0, 1,61,158,19,90,null,false),
-			this.params[2]=new Param(this,"loopStart","n",0, 1,81,158,19,90,null,0),
-			this.params[3]=new Param(this,"loopEnd","n",0, 1,101,158,19,90,null,0),
-			this.params[4]=new Param(this,"buffer","ob",1, 1,121,158,19,70,["loop.wav","rhythm.wav","voice.mp3","snare.wav"],"loop.wav"),
+			this.params[0]=new Param(this,"playbackRate","a",0, 1,41,158,19,90,null,1,"Speed at which to render the audio stream"),
+			this.params[1]=new Param(this,"loop","b",0, 1,61,158,19,90,null,false,"Audio data should play in a loop"),
+			this.params[2]=new Param(this,"loopStart","n",0, 1,81,158,19,90,null,0,"Looping start position in seconds"),
+			this.params[3]=new Param(this,"loopEnd","n",0, 1,101,158,19,90,null,0,"Looping end position in seconds"),
+			this.params[4]=new Param(this,"buffer","ob",1, 1,121,158,19,70,["loop.wav","rhythm.wav","voice.mp3","snare.wav"],"loop.wav","Audio asset to be played"),
 		];
 		this.Move(x,y,160,141);
 		this.node=null;
@@ -1128,7 +1147,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.child=[
 			new TitleBar(this,this.name,1,1,108,19),
 			this.io=new Io(this,0, 1,21,108,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:108,y:10,t:"so",d:"r",ch:0}]),
-			this.params[0]=new Param(this,"gain","a",1, 1,41,108,19,55,null,1),
+			this.params[0]=new Param(this,"gain","a",1, 1,41,108,19,55,null,1,"Gain value. Phase inversion if negative"),
 		];
 		this.Move(x,y,110,61);
 		this.node=actx.createGain();
@@ -1137,7 +1156,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.child=[
 			new TitleBar(this,this.name,1,1,118,19),
 			this.io=new Io(this,0, 1,21,118,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:118,y:10,t:"so",d:"r",ch:0}]),
-			this.params[0]=new Param(this,"delayTime","a",1, 1,41,118,19,65,null,0),
+			this.params[0]=new Param(this,"delayTime","a",1, 1,41,118,19,65,null,0,"Amount of delay in seconds"),
 		];
 		this.Move(x,y,120,61);
 		this.node=actx.createDelay();
@@ -1146,13 +1165,13 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.child=[
 			new TitleBar(this,this.name,1,1,173,19),
 			this.io=new Io(this,0, 1,21,173,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:173,y:10,t:"so",d:"r",ch:0}]),
-			this.params[0]=new Param(this,"panningModel","s",0, 1,41,173,19,90,["equalpower","HRTF"],"HRTF"),
-			this.params[1]=new Param(this,"distanceModel","s",0, 1,61,173,19,90,["linear","inverse","exponential"],"inverse"),
-			this.params[2]=new Param(this,"refDistance","n",0, 1,81,173,19,110,null,1),
-			this.params[3]=new Param(this,"maxDistance","n",0, 1,101,173,19,110,null,10000),
-			this.params[4]=new Param(this,"rolloffFactor","n",0, 1,121,173,19,110,null,1),
-			this.params[5]=new Param(this,"coneInnerAngle","n",0, 1,141,173,19,110,null,360),
-			this.params[6]=new Param(this,"coneOuterAngle","n",0, 1,161,173,19,110,null,360),
+			this.params[0]=new Param(this,"panningModel","s",0, 1,41,173,19,90,["equalpower","HRTF"],"HRTF","Spatialization algorithm selection"),
+			this.params[1]=new Param(this,"distanceModel","s",0, 1,61,173,19,90,["linear","inverse","exponential"],"inverse","Reducing volume algorithm selection"),
+			this.params[2]=new Param(this,"refDistance","n",0, 1,81,173,19,110,null,1,"A reference distance for reducing volume algorithm"),
+			this.params[3]=new Param(this,"maxDistance","n",0, 1,101,173,19,110,null,10000,"Maximum distance for reducing voluem algorithm"),
+			this.params[4]=new Param(this,"rolloffFactor","n",0, 1,121,173,19,110,null,1,"Describes how quickly the volume is reduced with distance"),
+			this.params[5]=new Param(this,"coneInnerAngle","n",0, 1,141,173,19,110,null,360,"For directional audio source, an angle for no volume reduction"),
+			this.params[6]=new Param(this,"coneOuterAngle","n",0, 1,161,173,19,110,null,360, "For directional audio source, an angle of "),
 			this.params[7]=new Param(this,"coneOuterGain","n",1, 1,181,173,19,110,null,0),
 		];
 		this.Move(x,y,175,201);
@@ -1508,7 +1527,7 @@ function Graph(canvas,actx,dest){
 				for(var j=0;j<n.child.length;++j){
 					var p=n.child[j];
 					if(p.type=="param"){
-						if(p.value!=p.defval||p.name=="buffer"){
+						if(p.value!=p.defval||p.name=="buffer"||p.name=="url"){
 							if(p.subtype=="n"||p.subtype=="a"||p.subtype=="k"||p.subtype=="kno")
 								paramtab[p.name]=parseFloat(p.value);
 							else
@@ -1932,6 +1951,10 @@ function MenuClick(e){
 		graph.Link();
 		MenuClear();
 		break;
+	case "addauto":
+		graph.AddNode("aut",null,500,300);
+		MenuClear();
+		break;
 	case "addfunc":
 		graph.AddNode("fun",null,500,300);
 		MenuClear();
@@ -1994,8 +2017,8 @@ function MouseDown(e){
 	}
 	document.activeElement.blur();
 	MenuClear();
-	if(e.target.className!="edit")
-		e.preventDefault();
+//	if(e.target.className!="edit")
+//		e.preventDefault();
 }
 function MouseMove(e){
 	var rc=graph.base.getBoundingClientRect();

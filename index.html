@@ -46,6 +46,26 @@ svg{
 .menuitem{
 	width:160px;
 	padding:5px;
+	position:relative;
+}
+.menuitem:hover{
+	background:#eea;
+}
+.menuitem div{
+	background:#fff;
+	position:absolute;
+	opacity:0.0;
+	padding:5px;
+	left:-1000px;
+	top:-1000px;
+	transition:opacity 1s linear 1s;
+}
+.menuitem:hover div{
+	left:100px;
+	top:-10px;
+	opacity:0.8;
+	display:block;
+	width:300px;
 }
 #menugraph{
 	background:rgba(0,0,0,0.3);
@@ -207,6 +227,27 @@ svg{
 	background:linear-gradient(#eee,#ccc);
 	padding:0px 0px 0px 4px;
 }
+.param .tooltip{
+	display:none;
+	background:#fff;
+	position:absolute;
+	opacity:0.0;
+	padding:5px;
+	left:-1000px;
+	top:0px;
+	width:200px;
+	height:20px;
+	overflow:hidden;
+	transition:opacity 1s linear 0s;
+	border-radius:5px;
+	font-weight:normal;
+	text-align:center;
+}
+.param:hover .tooltip{
+	left:20px;
+	top:-30px;
+	opacity:0.8;
+}
 .edit{
 	position:absolute;
 	text-align:center;
@@ -331,27 +372,28 @@ svg{
 		</div>
 		<button class="mainmenubtn" id="menunodebtn">Add Node</button>
 		<div class="menudropdown" id="menunode">
-			<button class="menuitem" id="addosc">Oscillator</button>
-			<button class="menuitem" id="addbufsrc">BufferSource</button>
-			<button class="menuitem" id="addstrmsrc">MediaStreamSource<br/>(from Mic)</button>
-			<button class="menuitem" id="addelemsrc">MediaElementSource<br/>(from URL)</button>
-			<button class="menuitem" id="addgain">Gain</button>
-			<button class="menuitem" id="addfilt">BiquadFilter</button>
-			<button class="menuitem" id="adddelay">Delay</button>
-			<button class="menuitem" id="addpanner">Panner</button>
-			<button class="menuitem" id="addcomp">DynamicsCompressor</button>
-			<button class="menuitem" id="addshaper">WaveShaper</button>
-			<button class="menuitem" id="addconv">Convolver</button>
-			<button class="menuitem" id="addscrproc">ScriptProcessor</button>
-			<button class="menuitem" id="addanalys">Analyser</button>
-			<button class="menuitem" id="addsplit">ChannelSplitter</button>
-			<button class="menuitem" id="addmerge">ChannelMerger</button>
+			<button class="menuitem" id="addosc">Oscillator<div class="tooltip">Audio source generating a periodic waveform</div></button>
+			<button class="menuitem" id="addbufsrc">BufferSource<div class="tooltip">Generates audio from an AudioBuffer</div></button>
+			<button class="menuitem" id="addstrmsrc">MediaStreamSource<div class="tooltip">Audio source from a MediaStream such as live audio input</div><br/>(from Mic)</button>
+			<button class="menuitem" id="addelemsrc">MediaElementSource<div class="tooltip">Audio source from an audio, video, or other media element</div><br/>(from URL)</button>
+			<button class="menuitem" id="addgain">Gain<div class="tooltip">Gain control</div></button>
+			<button class="menuitem" id="addfilt">BiquadFilter<div class="tooltip">Various filters e.g. LPF / HPF / BPF</div></button>
+			<button class="menuitem" id="adddelay">Delay<div class="tooltip">Dynamically adjustable variable delay</div></button>
+			<button class="menuitem" id="addpanner">Panner<div class="tooltip">Spatializing / positioning audio in 3D space</div></button>
+			<button class="menuitem" id="addcomp">DynamicsCompressor<div class="tooltip">Dynamics compression</div></button>
+			<button class="menuitem" id="addshaper">WaveShaper<div class="tooltip">Non-linear waveshaping effect for distortion and other more subtle warming effects</div></button>
+			<button class="menuitem" id="addconv">Convolver<div class="tooltip">Real-time linear effect (such as the sound of a concert hall)</div></button>
+			<button class="menuitem" id="addscrproc">ScriptProcessor<div class="tooltip">Generating or processing audio directly in JavaScript</div></button>
+			<button class="menuitem" id="addanalys">Analyser<div class="tooltip">Spectrum or waveform analyser, Use with music visualizers, or other visualization applications</div></button>
+			<button class="menuitem" id="addsplit">ChannelSplitter<div class="tooltip">Split to the individual channels of an audio stream, means Lch / Rch for stereo source</div></button>
+			<button class="menuitem" id="addmerge">ChannelMerger<div class="tooltip">Combining channels from multiple audio streams into a single audio stream</div></button>
 		</div>
 		<button class="mainmenubtn" id="menuctrlbtn">Add Controller</button>
 		<div class="menudropdown" id="menuctrl">
-			<button class="menuitem" id="addfunc">out=f(x,y)</button>
 			<button class="menuitem" id="addknob">Knob</button>
 			<button class="menuitem" id="addkeyb">Keyboard</button>
+			<button class="menuitem" id="addfunc">Function(x,y)</button>
+			<!--<button class="menuitem" id="addauto">Automation</button>-->
 		</div>
 		<button class="mainmenubtn" id="menuaboutbtn">About</button>
 		<div id="popup">
