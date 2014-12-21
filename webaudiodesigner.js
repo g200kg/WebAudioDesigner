@@ -1026,7 +1026,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.child=[
 			new TitleBar(this,this.name,1,1,188,19),
 			this.io=new Io(this,0,0,0,0,0,[{x:100,y:0,t:"ko",d:"u",ch:0}]),
-			this.params[0]=new Param(this,"onTrig","tf",0, 1,21,188,39,5,null,"440*Math.pow(2,(x+y-69)/12)"),
+			this.params[0]=new Param(this,"onTrig","sa",0, 1,21,188,59,5,null,"440*Math.pow(2,(x+y-69)/12)"),
 		];
 		this.Move(x,y,190,120);
 		this.node=null;
@@ -1373,7 +1373,7 @@ ANode.prototype.SetupParam=function(){
 				this.node[p.name]=eval("("+p.value+")");
 				break;
 			case "tc":
-				var c=this.node[p.name]=eval("("+p.value+")");
+				var c=this.node[p.name]=eval("(new Float32Array("+p.value+"))");
 				p.ctx.fillStyle="#000";
 				p.ctx.fillRect(0,0,64,64);
 				p.ctx.strokeStyle="#0f0";

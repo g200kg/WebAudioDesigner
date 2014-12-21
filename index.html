@@ -46,10 +46,12 @@ svg{
 .menuitem{
 	width:160px;
 	padding:5px;
+	margin:0px;
 	position:relative;
+	border:1px solid #666;
 }
 .menuitem:hover{
-	background:#eea;
+	background:#ffc;
 }
 .menuitem div{
 	background:#fff;
@@ -61,9 +63,9 @@ svg{
 	transition:opacity 1s linear 1s;
 }
 .menuitem:hover div{
-	left:100px;
-	top:-10px;
-	opacity:0.8;
+	left:155px;
+	top:-40px;
+	opacity:1;
 	display:block;
 	width:300px;
 }
@@ -244,8 +246,8 @@ svg{
 	text-align:center;
 }
 .param:hover .tooltip{
-	left:20px;
-	top:-30px;
+/*	left:20px;
+	top:40px;*/
 	opacity:0.8;
 }
 .edit{
@@ -361,6 +363,7 @@ svg{
 		<option value="(x+y-69)*100">note to detune</option>
 		<option value="x*y">multiply</option>
 		<option value="x+y">add</option>
+		</label>
 	</datalist>
 	<div id="menu">
 		<button class="mainmenubtn" id="playbtn">Play<!-- <svg width="20" height="10"><polygon id="playpgn" points="10,0 10,10 20,5" fill="green"/></svg>--></button>
@@ -393,7 +396,7 @@ svg{
 			<button class="menuitem" id="addknob">Knob</button>
 			<button class="menuitem" id="addkeyb">Keyboard</button>
 			<button class="menuitem" id="addfunc">Function(x,y)</button>
-			<!--<button class="menuitem" id="addauto">Automation</button>-->
+			<button class="menuitem" id="addauto">Automation</button>
 		</div>
 		<button class="mainmenubtn" id="menuaboutbtn">About</button>
 		<div id="popup">
