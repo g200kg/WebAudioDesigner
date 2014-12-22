@@ -174,7 +174,7 @@ function ExportJs(wadobj){
 				js+=sp+"this."+node.name+"."+j+".value = "+p+";\n";
 				break;
 			case "tc":
-				js+=sp+"this."+node.name+"."+j+" = "+p+";\n";
+				js+=sp+"this."+node.name+"."+j+" = new Float32Array("+p+");\n";
 				break;
 			case "ts":
 				js+=sp+"this."+node.name+"."+j+" = \n"+p+";\n";
@@ -1228,7 +1228,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 			new TitleBar(this,this.name,1,1,138,19),
 			this.io=new Io(this,0, 1,21,138,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:138,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"oversample","s",0, 1,41,138,19,80,["none","2x","4x"],"none"),
-			this.params[1]=new Param(this,"curve","tc",1, 1,61,138,79,80,null,"new Float32Array([\n-0.5,-0.5,0,0.5,0.5\n])"),
+			this.params[1]=new Param(this,"curve","tc",1, 1,61,138,79,80,null,"[\n-0.5,-0.5,0,0.5,0.5\n]"),
 		];
 		this.Move(x,y,140,141);
 		this.node=actx.createWaveShaper();
@@ -1527,7 +1527,7 @@ function Graph(canvas,actx,dest){
 				for(var j=0;j<n.child.length;++j){
 					var p=n.child[j];
 					if(p.type=="param"){
-						if(p.value!=p.defval||p.name=="buffer"||p.name=="url"){
+						if(p.value!=p.defval||p.name=="buffer"||p.name=="url"||p.name=="curve"){
 							if(p.subtype=="n"||p.subtype=="a"||p.subtype=="k"||p.subtype=="kno")
 								paramtab[p.name]=parseFloat(p.value);
 							else
