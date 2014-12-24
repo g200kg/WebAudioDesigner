@@ -142,9 +142,10 @@ function ExportJs(wadobj){
 				break;
 			case "osc":
 				switch(name){
-				case "type": return "s";
+				case "type": return "sw";
 				case "frequency": return "a";
 				case "detune": return "a";
+				case "periodic": return "tp";
 				}
 				break;
 			}
@@ -163,6 +164,12 @@ function ExportJs(wadobj){
 			var sp="      ".substr(0,indent);
 			var pt=ptype(node.type,j);
 			switch(pt){
+			case "sw":
+				if(p=="custom"){
+				}
+				else
+					js+=sp+"this."+node.name+"."+j+" = \""+p+"\";\n";
+				break;
 			case "s":
 				js+=sp+"this."+node.name+"."+j+" = \""+p+"\";\n";
 				break;
@@ -178,6 +185,10 @@ function ExportJs(wadobj){
 				break;
 			case "ts":
 				js+=sp+"this."+node.name+"."+j+" = \n"+p+";\n";
+				break;
+			case "tp":
+				js+=sp+"var p={"+p.replace(/\n/g," ")+"};\n";
+				js+=sp+"this."+node.name+".setPeriodicWave(this.audioctx.createPeriodicWave(p.real,p.imag);\n";
 				break;
 			case "ob":
 				js+=sp+"this."+node.name+"."+j+" = this.buffers['"+p+"'].data;\n";
@@ -592,12 +603,12 @@ function Connector(parent,subtype,dir,x,y,ch){
 Connector.prototype.HitTest=HitTest;
 Connector.prototype.GetPos=GetPos;
 
-function Io(parent,btm,x,y,w,h,p){
+function Io(parent,flags,x,y,w,h,p){
 	this.parent=parent,this.x=x,this.y=y,this.w=w,this.h=h;
 	this.type="io";
 	this.elem=document.createElement("div");
 	this.elem.setAttribute("class","io");
-	if(btm)
+	if(flags&1)
 		this.elem.style.borderRadius="0px 0px 4px 4px";
 	var st=this.elem.style;
 	st.left=x+"px";
@@ -645,7 +656,7 @@ Io.prototype.SetEdit=function(val,ch){
 	}
 }
 
-function Param(parent,name,subtype,btm,x,y,w,h,vx,option,defval,tooltip){
+function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 	this.parent=parent,this.name=name,this.subtype=subtype,this.x=x,this.y=y,this.w=w,this.h=h;
 	this.defval=this.value=defval;
 	this.child=[];
@@ -659,8 +670,14 @@ function Param(parent,name,subtype,btm,x,y,w,h,vx,option,defval,tooltip){
 	this.elem.style.top=this.y+"px";
 	this.elem.style.width=(this.w-4)+"px";
 	this.elem.style.height=this.h+"px";
-	if(btm)
-		this.elem.style.borderRadius="0px 0px 4px 4px";
+	var rt="0px 0px ",rb="0px 0px";
+	if(flags&2)
+		rt="4px 4px ";
+	if(flags&1)
+		rb="4px 4px ";
+	this.elem.style.borderRadius=rt+rb;
+	if(flags&4)
+		this.elem.style.display="none";
 	this.elem.innerHTML=name;
 	switch(subtype){
 	case "a":
@@ -720,6 +737,7 @@ function Param(parent,name,subtype,btm,x,y,w,h,vx,option,defval,tooltip){
 		this.elem.appendChild(this.edit);
 		break;
 	case "s":
+	case "sw":
 	case "ob":
 		this.edit=document.createElement("select");
 		this.edit.setAttribute("class","edit");
@@ -782,6 +800,17 @@ function Param(parent,name,subtype,btm,x,y,w,h,vx,option,defval,tooltip){
 	case "ts":
 		this.value=defval;
 		break;
+	case "tp":
+		this.value=defval;
+		this.cv=document.createElement("canvas");
+		this.cv.setAttribute("width","64");
+		this.cv.setAttribute("height","64");
+		this.cv.setAttribute("style","position:absolute;left:60px;top:12px");
+		this.elem.appendChild(this.cv);
+		this.ctx=this.cv.getContext("2d");
+		this.ctx.fillStyle="#000";
+		this.ctx.fillRect(0,0,64,64);
+		break;
 	}
 	if(tooltip)
 		this.elem.appendChild(this.tooltip);
@@ -827,6 +856,28 @@ Param.prototype.Set=function(){
 		if(this.parent.parent.node)
 			this.parent.parent.node[this.parent.name]=this.parent.value;
 		break;
+	case "sw":
+		this.parent.value=this.options[this.selectedIndex].value;
+		var node=this.parent.parent;
+		if(this.parent.value=="custom"){
+			node.params[3].elem.style.display="block";
+			node.params[3].h=80;
+			node.Move(node.x,node.y,node.w,180);
+			var tab=eval("({"+node.params[3].value+"})");
+			if(node.node)
+				node.node.setPeriodicWave(graph.actx.createPeriodicWave(new Float32Array(tab.real),new Float32Array(tab.imag)));
+			node.params[3].SetEdit(node.params[3].value);
+//			console.log(node.params[3].SetEdit);
+		}
+		else{
+			node.params[3].elem.style.display="none";
+			node.params[3].h=0;
+			node.Move(node.x,node.y,node.w,100);
+		}
+		if(this.parent.parent.node&&this.parent.value!="custom"){
+			this.parent.parent.node[this.parent.name]=this.parent.value;
+		}
+		break;
 	case "b":
 		this.parent.value=(this.value=="true")?true:false;
 		if(this.parent.parent.node)
@@ -865,6 +916,15 @@ Param.prototype.SetEdit=function(val,i){
 		break;
 	case "key":
 		break;
+	case "sw":
+		for(var i=this.edit.options.length-1;i>=0;--i){
+			if(this.edit.options[i].value==val){
+				this.edit.selectedIndex=i;
+				break;
+			}
+		}
+		this.Set.bind(this.edit)();
+		break;
 	case "s":
 	case "ob":
 		for(var i=this.edit.options.length-1;i>=0;--i){
@@ -883,6 +943,36 @@ Param.prototype.SetEdit=function(val,i){
 	case "ts":
 		this.value=val;
 		break;
+	case "tp":
+		this.value=val;
+		this.ctx.fillStyle="#000";
+		this.ctx.fillRect(0,0,64,64);
+		this.ctx.strokeStyle="#0f0";
+		this.ctx.lineWidth=2;
+		var wav=[];
+		for(var i=0;i<64;++i)
+			wav[i]=0;
+		var p=eval("({"+this.value+"})");
+		var l=Math.min(p.real.length,p.imag.length);
+		for(var i=1;i<l;++i){
+			for(var j=0;j<64;++j){
+				var th=j*2*3.14159265/64*i;
+				wav[j]+=p.real[i]*Math.cos(th)
+				wav[j]+=p.imag[i]*Math.sin(th);
+			}
+		}
+		var mx=0;
+		for(var i=0;i<64;++i){
+			if(wav[i]>mx)
+				mx=wav[i];
+		}
+		this.ctx.beginPath();
+		this.ctx.moveTo(0,32-wav[0]/mx*30);
+		for(var i=0;i<64;++i){
+			this.ctx.lineTo(i,32-wav[i]/mx*30);
+		}
+		this.ctx.stroke();
+		break;
 	case "tm":
 		this.value=val;
 		this.edit.value=val;
@@ -893,7 +983,7 @@ Param.prototype.SetEdit=function(val,i){
 		this.ctx.fillRect(0,0,64,64);
 		this.ctx.strokeStyle="#0f0";
 		this.ctx.lineWidth=2;
-		var c=eval(this.value);
+		var c=new Float32Array(eval("("+this.value+")"));
 		this.ctx.beginPath();
 		this.ctx.moveTo(0,32-c[0]*32);
 		for(var j=0;j<c.length;++j){
@@ -1025,10 +1115,11 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 	case "aut":
 		this.child=[
 			new TitleBar(this,this.name,1,1,188,19),
-			this.io=new Io(this,0,0,0,0,0,[{x:100,y:0,t:"ko",d:"u",ch:0}]),
-			this.params[0]=new Param(this,"onTrig","sa",0, 1,21,188,59,5,null,"440*Math.pow(2,(x+y-69)/12)"),
+			this.io=new Io(this,0,1,21,188,19,[{x:140,y:-21,t:"ko",d:"u",ch:0},{x:188,y:10,t:"ki",d:"r",ch:0}]),
+			this.params[0]=new Param(this,"on","sa",0, 1,41,188,59,5,null,"sv\n1\nt\nlr\n0\nt+0.1"),
+			this.params[1]=new Param(this,"off","sa",1, 1,101,188,39,5,null,"lr\n0\nt"),
 		];
-		this.Move(x,y,190,120);
+		this.Move(x,y,190,140);
 		this.node=null;
 		break;
 	case "key":
@@ -1097,9 +1188,10 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 			new TitleBar(this,this.name,1,1,128,19),
 			this.io=new Io(this,0, 1,21,128,19,[{x:128,y:10,t:"so",d:"r",ch:0}]),
 			this.play=new Button(this,"playbtn",16,23),
-			this.params[0]=new Param(this,"type","s",0, 1,41,128,19,50,["sine","square","sawtooth","triangle"],"sine","Shape of waveform"),
+			this.params[0]=new Param(this,"type","sw",0, 1,41,128,19,50,["sine","square","sawtooth","triangle","custom"],"sine","Shape of waveform"),
 			this.params[1]=new Param(this,"frequency","a",0, 1,61,128,19,65,null,440,"Frequency in Hz"),
 			this.params[2]=new Param(this,"detune","a",1, 1,81,128,19,65,null,0,"Frequency offset in Cent"),
+			this.params[3]=new Param(this,"periodic","tp",7, 1,101,128,79,65,null,"real:[0,0,0,0],\nimag:[0,1,1,1]"),
 		];
 		this.Move(x,y,130,101);
 		this.node=null;
@@ -1350,47 +1442,86 @@ ANode.prototype.Move=function(x,y,w,h){
 	}
 }
 ANode.prototype.SetupParam=function(){
-	if(this.node){
-		for(var i=this.child.length-1;i>=0;--i){
-			var p=this.child[i];
-			switch(p.subtype){
-			case "a":
+	for(var i=this.child.length-1;i>=0;--i){
+		var p=this.child[i];
+		switch(p.subtype){
+		case "a":
+			if(this.node)
 				this.node[p.name].value=p.value;
-				break;
-			case "n":
+			break;
+		case "n":
+			if(this.node)
 				this.node[p.name]=p.value;
-				break;
-			case "b":
+			break;
+		case "b":
+			if(this.node)
 				this.node[p.name]=p.value;
-				break;
-			case "s":
+			break;
+		case "s":
+			if(this.node)
 				this.node[p.name]=p.value;
-				break;
-			case "ob":
+			break;
+		case "sw":
+			if(this.node&&p.value!="custom")
+				this.node[p.name]=p.value;
+			break;
+		case "ob":
+			if(this.node)
 				this.node[p.name]=graph.buffers[p.value].data;
-				break;
-			case "ts":
+			break;
+		case "ts":
+			if(this.node)
 				this.node[p.name]=eval("("+p.value+")");
-				break;
-			case "tc":
-				var c=this.node[p.name]=eval("(new Float32Array("+p.value+"))");
-				p.ctx.fillStyle="#000";
-				p.ctx.fillRect(0,0,64,64);
-				p.ctx.strokeStyle="#0f0";
-				p.ctx.lineWidth=2;
-				p.ctx.beginPath();
-				p.ctx.moveTo(0,32-c[0]*32);
-				for(var j=0;j<c.length;++j){
-					var x=64*j/(c.length-1);
-					var y=32-c[j]*32;
-					p.ctx.lineTo(x,y);
-				}
-				p.ctx.stroke();
-				break;
-			case "tf":
-				this.node.func=eval("(function(x,y){return "+p.value+";})");
-				break;
+			break;
+		case "tp":
+			var tab=eval("({"+p.value+"})");
+			if(this.node)
+				this.node.setPeriodicWave(this.actx.createPeriodicWave(new Float32Array(tab.real),new Float32Array(tab.imag)));
+		p.ctx.fillStyle="#000";
+		p.ctx.fillRect(0,0,64,64);
+		p.ctx.strokeStyle="#0f0";
+		p.ctx.lineWidth=2;
+		var wav=[];
+		for(var ii=0;ii<64;++ii)
+			wav[ii]=0;
+		var l=Math.min(tab.real.length,tab.imag.length);
+		for(var ii=1;ii<l;++ii){
+			for(var jj=0;jj<64;++jj){
+				var th=jj*2*3.14159265/64*ii;
+				wav[jj]+=tab.real[ii]*Math.cos(th)
+				wav[jj]+=tab.imag[ii]*Math.sin(th);
 			}
+		}
+		var mx=0;
+		for(var ii=0;ii<64;++ii){
+			if(wav[ii]>mx)
+				mx=wav[ii];
+		}
+		p.ctx.beginPath();
+		p.ctx.moveTo(0,32-wav[0]/mx*30);
+		for(var ii=0;ii<64;++ii){
+			p.ctx.lineTo(ii,32-wav[ii]/mx*30);
+		}
+		p.ctx.stroke();
+			break;
+		case "tc":
+			var c=this.node[p.name]=eval("(new Float32Array("+p.value+"))");
+			p.ctx.fillStyle="#000";
+			p.ctx.fillRect(0,0,64,64);
+			p.ctx.strokeStyle="#0f0";
+			p.ctx.lineWidth=2;
+			p.ctx.beginPath();
+			p.ctx.moveTo(0,32-c[0]*32);
+			for(var j=0;j<c.length;++j){
+				var x=64*j/(c.length-1);
+				var y=32-c[j]*32;
+				p.ctx.lineTo(x,y);
+			}
+			p.ctx.stroke();
+			break;
+		case "tf":
+			this.node.func=eval("(function(x,y){return "+p.value+";})");
+			break;
 		}
 	}
 };
@@ -1527,7 +1658,16 @@ function Graph(canvas,actx,dest){
 				for(var j=0;j<n.child.length;++j){
 					var p=n.child[j];
 					if(p.type=="param"){
-						if(p.value!=p.defval||p.name=="buffer"||p.name=="url"||p.name=="curve"){
+						if(p.name=="type"&&p.value=="custom"){
+							paramtab.type="custom";
+							for(var k=0;k<n.child.length;++k){
+								var pp=n.child[k];
+								if(pp.name=="periodic"){
+									paramtab.periodic=pp.value;
+								}
+							}
+						}
+						else if(p.value!=p.defval||p.name=="buffer"||p.name=="url"||p.name=="curve"){
 							if(p.subtype=="n"||p.subtype=="a"||p.subtype=="k"||p.subtype=="kno")
 								paramtab[p.name]=parseFloat(p.value);
 							else
@@ -2086,14 +2226,16 @@ function MouseUp(e){
 			case "param":
 				switch(target.subtype){
 				case "ts":
+				case "tp":
 					var e=document.getElementById("text");
 					e.value=target.value;
 					var pos=target.GetPos();
 					e.style.display="block";
 					e.style.left=pos.x+"px";
-					e.style.top=(pos.y+40)+"px";
-					e.style.width="400px";
-					e.style.height="300px";
+					e.style.top=(pos.y+70)+"px";
+					e.style.width="200px";
+					e.style.height="100px";
+//					e.addEventListener("change",function(){target.value=e.value;target.parent.SetupParam()});
 					e.onchange=function(){
 						target.value=e.value;
 						target.parent.SetupParam();
@@ -2108,7 +2250,7 @@ function MouseUp(e){
 					e.style.top=(pos.y+80)+"px";
 					e.style.width="200px";
 					e.style.height="200px";
-					e.addEventListener("change",function(){target.value=e.value;target.parent.SetupParam()});
+					e.onchange=function(){target.value=e.value;target.parent.SetupParam()};
 					break;
 				}
 				break;
