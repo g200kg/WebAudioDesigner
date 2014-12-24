@@ -188,7 +188,7 @@ function ExportJs(wadobj){
 				break;
 			case "tp":
 				js+=sp+"var p={"+p.replace(/\n/g," ")+"};\n";
-				js+=sp+"this."+node.name+".setPeriodicWave(this.audioctx.createPeriodicWave(p.real,p.imag);\n";
+				js+=sp+"this."+node.name+".setPeriodicWave(this.audioctx.createPeriodicWave(new Float32Array(p.real),new Float32Array(p.imag)));\n";
 				break;
 			case "ob":
 				js+=sp+"this."+node.name+"."+j+" = this.buffers['"+p+"'].data;\n";
