@@ -2236,7 +2236,7 @@ function MouseUp(e){
 					e.style.width="200px";
 					e.style.height="100px";
 //					e.addEventListener("change",function(){target.value=e.value;target.parent.SetupParam()});
-					ee.onchange=function(){
+					e.onchange=function(){
 						target.value=e.value;
 						target.parent.SetupParam();
 					};
@@ -2250,7 +2250,7 @@ function MouseUp(e){
 					e.style.top=(pos.y+80)+"px";
 					e.style.width="200px";
 					e.style.height="200px";
-					ee.onchange=function(){target.value=e.value;target.parent.SetupParam()};
+					e.onchange=function(){target.value=e.value;target.parent.SetupParam()};
 					break;
 				}
 				break;
