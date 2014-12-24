@@ -814,6 +814,8 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 	}
 	if(tooltip)
 		this.elem.appendChild(this.tooltip);
+	if(flags&8)
+		this.h=0;
 	parent.elem.appendChild(this.elem);
 }
 Param.prototype.HitTest=HitTest;
@@ -1191,7 +1193,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 			this.params[0]=new Param(this,"type","sw",0, 1,41,128,19,50,["sine","square","sawtooth","triangle","custom"],"sine","Shape of waveform"),
 			this.params[1]=new Param(this,"frequency","a",0, 1,61,128,19,65,null,440,"Frequency in Hz"),
 			this.params[2]=new Param(this,"detune","a",1, 1,81,128,19,65,null,0,"Frequency offset in Cent"),
-			this.params[3]=new Param(this,"periodic","tp",7, 1,101,128,79,65,null,"real:[0,0,0,0],\nimag:[0,1,1,1]"),
+			this.params[3]=new Param(this,"periodic","tp",15, 1,101,128,79,65,null,"real:[0,0,0,0],\nimag:[0,1,1,1]"),
 		];
 		this.Move(x,y,130,101);
 		this.node=null;
