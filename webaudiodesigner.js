@@ -1527,7 +1527,9 @@ ANode.prototype.SetupParam=function(){
 		}
 	}
 };
+ANode.prototype.Process=function(){
 
+}
 ANode.prototype.Realize=function(){
 	if(this.subtype=="osc"){
 		this.node=this.actx.createOscillator();
@@ -1735,6 +1737,7 @@ function Graph(canvas,actx,dest){
 		ExportJs(this.GetJson());
 	};
 	this.Load=function(obj){
+		document.getElementById("loading").style.display="block";
 		this.New();
 		this.child[0].Move(obj[0].x,obj[0].y);
 		for(var i=1;i<obj.length;++i){
@@ -1812,6 +1815,7 @@ function Graph(canvas,actx,dest){
 			}
 		}
 		graph.Redraw();
+		document.getElementById("loading").style.display="none";
 	};
 	this.Find=function(name){
 		var s=name.split(".");
