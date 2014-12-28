@@ -616,7 +616,8 @@ function Io(parent,flags,x,y,w,h,p){
 	st.width=w+"px";
 	st.height=h+"px";
 	this.child=[];
-	this.args=[0,0];
+	this.inputs=[0,0];
+	this.outputs=[0,0];
 	for(var i=0;i<p.length;++i){
 		var o=p[i];
 		switch(o.t){
@@ -646,13 +647,17 @@ function Io(parent,flags,x,y,w,h,p){
 }
 Io.prototype.HitTest=HitTest;
 Io.prototype.GetPos=GetPos;
-Io.prototype.SetEdit=function(val,ch){
+Io.prototype.SetEdit=function(val,ch,propagate){
 	if(this.parent.subtype=="fun"){
-		this.args[ch]=val;
+		this.inputs[ch]=val;
 		var node=this.parent;
-		for(var i=node.conn.length-1;i>=0;--i){
-			node.conn[i].t.parent.SetEdit(this.parent.func(this.args[0],this.args[1]),node.conn[i].t.ch);
+
+		if(propagate){
+			for(var i=node.conn.length-1;i>=0;--i){
+				node.conn[i].t.parent.SetEdit(this.parent.func(this.inputs[0],this.inputs[1]),node.conn[i].t.ch);
+			}
 		}
+
 	}
 }
 
@@ -723,7 +728,9 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 		this.edit.parent=this;
 		this.elem.style.padding="0px";
 		this.edit.addEventListener("change",function(e){
-			this.parent.parent.Note(e.note);
+//			this.parent.parent.Note(e.note);
+			this.parent.parent.io.inputs[0]=e.note[1];
+			this.parent.parent.io.inputs[1]=e.note[0];
 		});
 		break;
 	case "b":
@@ -839,16 +846,17 @@ Param.prototype.Set=function(){
 		this.parent.parent.Rebuild();
 		break;
 	case "kno":
+		this.parent.parent.io.inputs[0]=this.value;
 		this.parent.parent.knob.value=this.value;
-		for(var i=this.parent.parent.conn.length-1;i>=0;--i){
-			this.parent.parent.conn[i].t.parent.SetEdit(this.value,this.parent.parent.conn[i].t.ch);
-		}
+//		for(var i=this.parent.parent.conn.length-1;i>=0;--i){
+//			this.parent.parent.conn[i].t.parent.SetEdit(this.value,this.parent.parent.conn[i].t.ch);
+//		}
 		break;
 	case "key":
-		this.parent.parent.key.value=this.value;
-		for(var i=this.parent.parent.conn.length-1;i>=0;--i){
-			this.parent.parent.conn[i].t.parent.SetEdit(this.value,this.parent.parent.conn[i].t.ch);
-		}
+//		this.parent.parent.key.value=this.value;
+//		for(var i=this.parent.parent.conn.length-1;i>=0;--i){
+//			this.parent.parent.conn[i].t.parent.SetEdit(this.value,this.parent.parent.conn[i].t.ch);
+//		}
 		break;
 	case "tf":
 		this.parent.parent.Rebuild();
@@ -1060,7 +1068,10 @@ function TitleBar(parent,name,x,y,w,h){
 	this.type="title";
 	this.parent=parent;
 	this.elem=document.createElement("div");
-	this.elem.innerHTML=name;
+	var ti=name;
+	if(ti.indexOf("_")>=0)
+		ti=ti.substring(ti.indexOf("_")+1);
+	this.elem.innerHTML=ti;
 	this.elem.setAttribute("class","titlebar");
 	var st=this.elem.style;
 	st.top=y+"px";
@@ -1090,7 +1101,8 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 	this.params=[];
 	this.name=name;
 	if(this.name==null)
-		this.name=graph.GetNextName(namtab[this.subtype]);
+		this.name=graph.GetNextName(this.subtype);
+//		this.name=graph.GetNextName(namtab[this.subtype]);
 	switch(this.subtype){
 	case "seq":
 		this.child=[
@@ -1407,13 +1419,13 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 ANode.prototype.HitTest=HitTest;
 ANode.prototype.GetPos=GetPos;
 ANode.prototype.Note=function(note){
-	for(var i=this.conn.length-1;i>=0;--i){
-		var c=this.conn[i];
-		if(c.o.ch==0)
-			c.t.parent.SetEdit(note[1],c.t.ch);
-		else
-			c.t.parent.SetEdit(note[0],c.t.ch);
-	}
+//	for(var i=this.conn.length-1;i>=0;--i){
+//		var c=this.conn[i];
+//		if(c.o.ch==0)
+//			c.t.parent.SetEdit(note[1],c.t.ch);
+//		else
+//			c.t.parent.SetEdit(note[0],c.t.ch);
+//	}
 }
 ANode.prototype.Rebuild=function(){
 	switch(this.subtype){
@@ -1527,8 +1539,25 @@ ANode.prototype.SetupParam=function(){
 		}
 	}
 };
-ANode.prototype.Process=function(){
-
+ANode.prototype.Process=function(propagate){
+	switch(this.subtype){
+	case "kno":
+		this.io.outputs[0]=this.io.inputs[0];
+		break;
+	case "key":
+		this.io.outputs[0]=this.io.inputs[0];
+		this.io.outputs[1]=this.io.inputs[1];
+		break;
+	case "fun":
+		this.io.outputs[0]=this.func(this.io.inputs[0],this.io.inputs[1]);
+		break;
+	default:
+		return;
+	}
+	for(var i=this.conn.length-1;i>=0;--i){
+		var c=this.conn[i];
+		c.t.parent.SetEdit(this.io.outputs[c.o.ch],c.t.ch,propagate);
+	}
 }
 ANode.prototype.Realize=function(){
 	if(this.subtype=="osc"){
@@ -1543,13 +1572,21 @@ ANode.prototype.Realize=function(){
 		this.mml=new MMLEmitter(this.actx,"/:"+this.params[1].edit.value+":/999",{defaultOctave:4});
 		this.mml.anode=this;
 		this.mml.tracks[0].on("note",function(e){
-			this.Note([1,e.midi]);
+//			this.Note([1,e.midi]);
+			this.io.inputs[0]=e.midi;
+			this.io.inputs[1]=1;
 			this.key.edit.setNote(1,e.midi);
 			this.e=e;
 			e.noteOff(function(){
 				this.key.edit.setNote(0,this.e.midi);
-				this.Note([0,this.e.midi]);
+//				this.Note([0,this.e.midi]);
+				this.io.inputs[0]=this.e.midi;
+				this.io.inputs[1]=0;
+//				graph.Process(true);
+				this.Process(true);
 			}.bind(this));
+//			graph.Process(true);
+			this.Process(true);
 		}.bind(this));
 		this.mml.start();
 	}
@@ -1623,6 +1660,7 @@ ANode.prototype.Connect=function(t,o,i){
 };
 function Graph(canvas,actx,dest){
 	this.x=this.y=0;
+	this.lx=this.ly=0;
 	this.menu=document.getElementById("menu");
 	this.menu.onclick=MenuClick;
 	this.base=document.getElementById("base");
@@ -1652,6 +1690,14 @@ function Graph(canvas,actx,dest){
 			"Trig Room.wav":"samples/ir/IMreverbs1/Trig Room.wav",
 		}
 	);
+	this.Process=function(propagate){
+		for(var i=graph.child.length-1;i>=0;--i){
+			var node=graph.child[i];
+			if(node&&node.Process)
+				node.Process(propagate);
+		}
+	};
+	setInterval(this.Process,50);
 	this.GetJson=function(){
 		var o=[];
 		for(var i=0;i<this.child.length;++i){
@@ -1844,9 +1890,12 @@ function Graph(canvas,actx,dest){
 		for(;;){
 			var nam=type+n;
 			for(var i=0;i<this.child.length;++i){
-				if(nam==this.child[i].name){
+				var t=this.child[i].name;
+				var p=t.indexOf("_");
+				if(p>=0)
+					t=t.substring(0,p);
+				if(nam==t)
 					break;
-				}
 			}
 			if(i==this.child.length)
 				return nam;
@@ -1862,7 +1911,7 @@ function Graph(canvas,actx,dest){
 			var node=this.child[i];
 			if(node.conn.length){
 				kmode=0;
-				if(node.subtype=="kno"||node.subtype=="key"||node.subtype=="fun")
+				if(node.subtype=="kno"||node.subtype=="key"||node.subtype=="fun"||node.subtype=="aut")
 					kmode=1;
 				this.ctx.beginPath();
 				for(var j=node.conn.length-1;j>=0;--j){
@@ -2041,9 +2090,28 @@ function Graph(canvas,actx,dest){
 		}
 	};
 	this.Resize=function(){
-		graph.canvas.width=window.innerWidth;
-		graph.canvas.height=window.innerHeight-55;
-		graph.Redraw();
+		graph.canvas.width=graph.w=window.innerWidth;
+		graph.canvas.height=graph.h=window.innerHeight-55;
+		graph.Redraw("Rename");
+	};
+	this.Rename=function(node){
+		var nam=prompt("rename");
+		if(nam===null)
+			return;
+		node.name=this.GetNextName(node.subtype)+"_"+nam;
+		node.child[0].elem.childNodes[0].nodeValue=nam;
+/*		document.getElementById("renametext").value=node.name;
+		var dlg=document.getElementById("renamedialog");
+		console.log(dlg.show);
+
+		document.getElementById("renamedialog").showModal();
+		document.getElementById("renameok").onclick=function(){
+			document.getElementById("renamedialog").close();
+		};
+		document.getElementById("renamecancel").onclick=function(){
+			document.getElementById("renamedialog").close();
+		};
+*/
 	};
 }
 Graph.prototype.HitTest=HitTest;
@@ -2150,6 +2218,11 @@ function MenuClick(e){
 		MenuClear();
 		graph.Redraw();
 		return;
+	case "rename":
+		MenuClear();
+		graph.Rename(graph.focus.parent.parent);
+		graph.Redraw();
+		return;
 	}
 }
 function MouseDown(e){
@@ -2163,8 +2236,7 @@ function MouseDown(e){
 	}
 	document.activeElement.blur();
 	MenuClear();
-//	if(e.target.className!="edit")
-//		e.preventDefault();
+	graph.lx=graph.ly=0;
 }
 function MouseMove(e){
 	var rc=graph.base.getBoundingClientRect();
@@ -2198,6 +2270,15 @@ function MouseMove(e){
 		markng.display="none";
 	}
 	if(graph.dragging){
+		if(graph.dragging==graph){
+			var dx=mouseX+graph.dragoffset.x;
+			var dy=mouseY+graph.dragoffset.y;
+			for(var i=graph.child.length-1;i>=0;--i){
+				var node=graph.child[i];
+				node.Move(node.x+dx-graph.lx,node.y+dy-graph.ly);
+			}
+			graph.lx=dx,graph.ly=dy;
+		}
 		if(graph.dragging.type=="title")
 			graph.dragging.parent.Move(mouseX+graph.dragoffset.x,mouseY+graph.dragoffset.y);
 		graph.Redraw();
@@ -2232,6 +2313,20 @@ function MouseUp(e){
 			case "param":
 				switch(target.subtype){
 				case "ts":
+					var e=document.getElementById("text");
+					e.value=target.value;
+					var pos=target.GetPos();
+					e.style.display="block";
+					e.style.left=pos.x+"px";
+					e.style.top=(pos.y+70)+"px";
+					e.style.width="400px";
+					e.style.height="200px";
+//					e.addEventListener("change",function(){target.value=e.value;target.parent.SetupParam()});
+					e.onchange=function(){
+						target.value=e.value;
+						target.parent.SetupParam();
+					};
+					break;
 				case "tp":
 					var e=document.getElementById("text");
 					e.value=target.value;
