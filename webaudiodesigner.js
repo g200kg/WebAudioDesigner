@@ -731,6 +731,7 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 //			this.parent.parent.Note(e.note);
 			this.parent.parent.io.inputs[0]=e.note[1];
 			this.parent.parent.io.inputs[1]=e.note[0];
+			this.parent.parent.Process(true);
 		});
 		break;
 	case "b":
