@@ -654,7 +654,7 @@ Io.prototype.SetEdit=function(val,ch,propagate){
 
 		if(propagate){
 			for(var i=node.conn.length-1;i>=0;--i){
-				node.conn[i].t.parent.SetEdit(this.parent.func(this.inputs[0],this.inputs[1]),node.conn[i].t.ch);
+				node.conn[i].t.parent.SetEdit(this.parent.func(this.inputs[0],this.inputs[1]),node.conn[i].t.ch,propagate);
 			}
 		}
 
@@ -746,6 +746,7 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 	case "s":
 	case "sw":
 	case "ob":
+		this.child.push(new Connector(this,"ki","r",this.w,10));
 		this.edit=document.createElement("select");
 		this.edit.setAttribute("class","edit");
 		for(var j=0;j<option.length;++j){
@@ -927,20 +928,28 @@ Param.prototype.SetEdit=function(val,i){
 	case "key":
 		break;
 	case "sw":
-		for(var i=this.edit.options.length-1;i>=0;--i){
-			if(this.edit.options[i].value==val){
-				this.edit.selectedIndex=i;
-				break;
+		if(typeof(val)=="number")
+			this.edit.selectedIndex=val;
+		else{
+			for(var i=this.edit.options.length-1;i>=0;--i){
+				if(this.edit.options[i].value==val){
+					this.edit.selectedIndex=i;
+					break;
+				}
 			}
 		}
 		this.Set.bind(this.edit)();
 		break;
 	case "s":
 	case "ob":
-		for(var i=this.edit.options.length-1;i>=0;--i){
-			if(this.edit.options[i].value==val){
-				this.edit.selectedIndex=i;
-				break;
+		if(typeof(val)=="number")
+			this.edit.selectedIndex=val;
+		else{
+			for(var i=this.edit.options.length-1;i>=0;--i){
+				if(this.edit.options[i].value==val){
+					this.edit.selectedIndex=i;
+					break;
+				}
 			}
 		}
 		this.Set.bind(this.edit)();
