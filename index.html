@@ -113,6 +113,7 @@ svg{
 	display:none;
 }
 #urlpane{
+	z-index:200;
 	position:absolute;
 	display:none;
 	background:#667;
@@ -137,6 +138,7 @@ svg{
 	font-weight:normal;
 }
 #aboutpane{
+	z-index:200;
 	position:absolute;
 	display:none;
 	background:#bbd;
@@ -150,6 +152,7 @@ svg{
 	overflow:scroll;
 }
 #jspane{
+	z-index:200;
 	position:absolute;
 	display:none;
 	background:#667;
@@ -199,6 +202,17 @@ svg{
 	border-radius:10px;
 	text-align:center;
 }
+#layoutbase{
+	position:absolute;
+	display:none;
+	left:80px;
+	top:80px;
+	width:800px;
+	height:600px;
+	background:linear-gradient(#888 0%,#eee 5%,#ccc 97%,#444 100%);
+	border-radius:10px;
+	border:2px solid #333;
+}
 dialog::backdrop {
 	position: fixed;
 	top: 0;
@@ -224,9 +238,10 @@ dialog::backdrop {
 	position:absolute;
 	background:linear-gradient(#dfa,#bc7);
 	height:19px;
-	padding:0px 0px 0px 20px;
+	padding:0px 0px 0px 18px;
 	margin:0px;
 	border-radius:4px 4px 0px 0px;
+	overflow:hidden;
 }
 .io{
 	position:absolute;
@@ -301,6 +316,14 @@ dialog::backdrop {
 	background:#888;
 	border-radius:0px 0px 4px 4px;
 }
+.knoblabel{
+	position:absolute;
+	top:140px;
+	left:0px;
+	text-align:center;
+	width:70px;
+	display:none;
+}
 .keypane{
 	position:absolute;
 	top:41px;
@@ -372,6 +395,7 @@ dialog::backdrop {
 </div>
 <div id="base">
 	<canvas id="canvas" width="1024" height="768"></canvas>
+	<div id="layoutbase"></div>
 	<div id="ins"></div>
 	<div id="connokmark"></div>
 	<div id="connngmark"><svg width="20" height="20"><path d='M0,0 L20,20 M0,20,L20,0' stroke="#f00" stroke-width="2"/></svg></div>
@@ -391,12 +415,15 @@ dialog::backdrop {
 		</label>
 	</datalist>
 	<div id="menu">
-		<button class="mainmenubtn" id="playbtn">Play<!-- <svg width="20" height="10"><polygon id="playpgn" points="10,0 10,10 20,5" fill="green"/></svg>--></button>
+		<button class="mainmenubtn" id="playbtn">Start<!-- <svg width="20" height="10"><polygon id="playpgn" points="10,0 10,10 20,5" fill="green"/></svg>--></button>
 		<button class="mainmenubtn" id="menugraphbtn">Graph</button>
 		<div class="menudropdown" id="menugraph">
 			<button class="menuitem" id="newgraph">New Graph</button>
 			<button class="menuitem" id="export">Export as JavaScript file</button>
 			<button class="menuitem" id="link">Link to this graph</button>
+			<button class="menuitem" id="design">Design Mode</button>
+			<button class="menuitem" id="layout">Layout Mode</button>
+			<button class="menuitem" id="test">Play Mode</button>
 		</div>
 		<button class="mainmenubtn" id="menunodebtn">Add Node</button>
 		<div class="menudropdown" id="menunode">
@@ -419,6 +446,7 @@ dialog::backdrop {
 		<button class="mainmenubtn" id="menuctrlbtn">Add Controller</button>
 		<div class="menudropdown" id="menuctrl">
 			<button class="menuitem" id="addknob">Knob</button>
+			<button class="menuitem" id="addtog">ToggleSw</button>
 			<button class="menuitem" id="addkeyb">Keyboard</button>
 			<button class="menuitem" id="addfunc">Function(x,y)</button>
 			<button class="menuitem" id="addauto">Automation</button>
@@ -463,7 +491,7 @@ dialog::backdrop {
 	<h4>Menu</h4>
 	<table>
 		<tr><th>Menu</th><th>Description</th></tr>
-		<tr><td>Play</td><td>Start all OSC/BufferSource</td></tr>
+		<tr><td>Start</td><td>Start all OSC/BufferSource</td></tr>
 		<tr><td>Graph - New</td><td>Graph Clear current graph</td></tr>
 		<tr><td>Graph - Export as JavaScript file</td><td>Export as simple JavaScript code</td></tr>
 		<tr><td>Graph - Link to this graph</td><td>Display a URL that contain current graph</td></tr>

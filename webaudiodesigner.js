@@ -2,6 +2,28 @@
 var defaultpatch=[{"type":"destination","name":"destination","x":568,"y":86,"params":[],"connect":[]},{"type":"osc","name":"osc2","x":384,"y":164,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"440"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"destination","o":0,"i":0}]},{"type":"gain","name":"gain1","x":200,"y":300,"params":[{"name":"gain","type":"a","value":"1000"}],"connect":[{"t":"osc2.detune","o":0}]},{"type":"osc","name":"osc1","x":49,"y":150,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"2"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"gain1","o":0,"i":0}]}];
 
 function HitTest(x,y){
+	if(graph.mode){
+		if(this.child){
+			for(var i=this.child.length-1;i>=0;--i){
+				var p=this.child[i];
+				if(p.type=="node"&&(p.subtype=="kno"||p.subtype=="tog"||p.subtype=="key")){
+					for(var j=p.child.length-1;j>=0;--j){
+						var pp=p.child[j];
+						if(pp.subtype=="kno"||pp.subtype=="tog"||pp.subtype=="key"){
+							var h=pp.HitTest(x,y);
+							if(h)
+								return h;
+						}
+					}
+				}
+			}
+		}
+		var pos=this.GetPos();
+		if(x>=pos.x&&x<pos.x+this.w&&y>=pos.y&&y<pos.y+this.h){
+			return this;
+		}
+		return null;
+	}
 	if(this.child){
 		for(var i=this.child.length-1;i>=0;--i){
 			var h=this.child[i].HitTest(x,y);
@@ -17,9 +39,23 @@ function HitTest(x,y){
 }
 function GetPos(){
 	var pos={x:this.x,y:this.y};
-	for(var p=this.parent;p;p=p.parent){
-		pos.x+=p.x;
-		pos.y+=p.y;
+	if(graph.mode){
+		for(var p=this.parent;p;p=p.parent){
+			if(typeof(p.X)=="number"){
+				pos.x+=p.X;
+				pos.y+=p.Y;
+			}
+			else{
+				pos.x+=p.x;
+				pos.y+=p.y;
+			}
+		}
+	}
+	else{
+		for(var p=this.parent;p;p=p.parent){
+			pos.x+=p.x;
+			pos.y+=p.y;
+		}
 	}
 	return pos;
 }
@@ -34,7 +70,37 @@ function ToFixed(n){
 	 n=n.substring(0,i+1);
 	return n;
 }
-
+function EncBase64(x,base64url){
+	var tab = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	var r = "", d = 0, bits = 0, l = x.length, get = function(i){return x[i]};
+	if(base64url)
+		tab = tab.replace("+/","-_");
+	if(typeof(x) == "string")
+		get = function(i){return x.charCodeAt(i);};
+	for(var i = 0; (i < l) || bits; ++i){
+		d <<= 1,++bits;
+		if(i < l)
+			d = (d << 7) + (get(i) & 0xff), bits += 7;
+		while(bits >= 6)
+			r += tab[(d >> (bits -= 6)) & 0x3f];
+	}
+	if(!base64url)
+		r += "===".substr(0,((r.length + 3) & ~3) - r.length);
+	return r;
+}
+function DecBase64(x,str){
+	x = x.split("=")[0];
+	var tab = "-_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	var r = [], d = 0, bits = 0, l = x.length;
+	for(var i = 0; i < l; ++i){
+		d=(d << 6) + ((tab.indexOf(x[i]) - 2) & 0x3f);
+		if((bits += 6) >= 8)
+			r.push((d >> (bits -= 8)) & 0xff);
+	}
+	if(str)
+		r = String.fromCharCode.apply(null,r);
+	return r;
+}
 function LoadBuffers(actx,list){
 	buf={"_count":Object.keys(list).length,"_ready":false};
 	for(name in list){
@@ -230,6 +296,7 @@ function ExportJs(wadobj){
 	var bufs=[];
 	var usestrm=false;
 	var useknob=false;
+	var usetog=false;
 	var usekey=false;
 	var usefunc=false;
 	var obj=wadobj.o;
@@ -245,6 +312,8 @@ function ExportJs(wadobj){
 			usestrm=true;
 		if(o.type=="kno")
 			useknob=true;
+		if(o.type=="tog")
+			usetog=true;
 		if(o.type=="key")
 			usekey=true;
 		if(o.type=="fun")
@@ -263,7 +332,7 @@ function ExportJs(wadobj){
 		}
 	}
 	var js="<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n<body>\n";
-	if(useknob||usekey){
+	if(useknob||usekey||usetog){
 		files.push("webcomponents/webcomponents.min.js");
 		files.push("webcomponents/polymer.js");
 		files.push("webcomponents/polymer.html");
@@ -273,7 +342,10 @@ function ExportJs(wadobj){
 		js+="<script src=\"webcomponents/webcomponents.min.js\"></script>\n"
 			+"<link rel=\"import\" href=\"webcomponents/polymer.html\">\n"
 			+"<link rel=\"import\" href=\"webcomponents/controls.html\">\n"
-			+"<style>\nwebaudio-knob{margin:10px;}\n</style>\n";
+			+"<style>\nw"
+			+"ebaudio-knob{margin:10px;}\n"
+			+"webaudio-switch{margin:10px;}\n"
+			+"</style>\n"
 	}
 	js+="<script src='wadengine.js'></script>\n";
 	js+="<script>\nvar waddata = "+str+"\n\n";
@@ -349,6 +421,30 @@ function ExportJs(wadobj){
 		"  function Knob(id){\n"+
 		"    this.c=[];\n"+
 		"    this.type='kno';\n"+
+		"    this.elem=document.getElementById(id);\n"+
+		"    this.elem.addEventListener('change',function(e){\n"+
+		"      for(var i=this.c.length-1;i>=0;--i){\n"+
+		"        var c=this.c[i];\n"+
+		"        if(c[0].set)\n"+
+		"          c[0].set(e.target.value,c[2]);\n"+
+		"        else if(typeof(c[0].value)=='number')\n"+
+		"          c[0].value=e.target.value;\n"+
+		"        else\n"+
+		"          c[0]=e.target.value;\n"+
+		"      }\n"+
+		"    }.bind(this));\n"+
+		"    this.connect=function(target,o,i){\n"+
+		"      o=o?1:0;\n"+
+		"      i=i?1:0;\n"+
+		"      this.c.push([target,o,i]);\n"+
+		"    };\n"+
+		"  }\n";
+	}
+	if(usetog){
+		js+=
+		"  function Toggle(id){\n"+
+		"    this.c=[];\n"+
+		"    this.type='tog';\n"+
 		"    this.elem=document.getElementById(id);\n"+
 		"    this.elem.addEventListener('change',function(e){\n"+
 		"      for(var i=this.c.length-1;i>=0;--i){\n"+
@@ -489,6 +585,9 @@ function ExportJs(wadobj){
 		case "kno":
 			js+="    this."+o.name+" = new Knob('"+o.name+"');\n";
 			break;
+		case "tog":
+			js+="    this."+o.name+" = new Toggle('"+o.name+"');\n";
+			break;
 		}
 	}
 	for(var i=0;i<obj.length;++i){
@@ -513,7 +612,7 @@ function ExportJs(wadobj){
 		var o=obj[i];
 		Connect(o,4,true);
 		if(o.type=="osc"||o.type=="buf"||o.type=="str")
-			Connect(o,6,false);
+			Connect(o,4,false);
 	}
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
@@ -616,7 +715,7 @@ function Io(parent,flags,x,y,w,h,p){
 	st.width=w+"px";
 	st.height=h+"px";
 	this.child=[];
-	this.inputs=[0,0];
+	this.inputs=[0,0,0];
 	this.outputs=[0,0];
 	for(var i=0;i<p.length;++i){
 		var o=p[i];
@@ -648,17 +747,15 @@ function Io(parent,flags,x,y,w,h,p){
 Io.prototype.HitTest=HitTest;
 Io.prototype.GetPos=GetPos;
 Io.prototype.SetEdit=function(val,ch,propagate){
-	if(this.parent.subtype=="fun"){
+//	if(this.parent.subtype=="fun"){
 		this.inputs[ch]=val;
 		var node=this.parent;
-
 		if(propagate){
 			for(var i=node.conn.length-1;i>=0;--i){
 				node.conn[i].t.parent.SetEdit(this.parent.func(this.inputs[0],this.inputs[1]),node.conn[i].t.ch,propagate);
 			}
 		}
-
-	}
+//	}
 }
 
 function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
@@ -722,8 +819,17 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 		this.elem.style.padding="5px 10px";
 		this.edit.addEventListener("change",this.Set);
 		break;
-	case "key":
-		this.elem.innerHTML="<webaudio-keyboard width='320' height='50' min='48' max='72'></webaudio-keyboard>";
+	case "tog":
+		this.elem.innerHTML="<webaudio-switch width='24' height='24' type='toggle' style='position:absolute;top:5px;left:13px'></webaudio-switch>";
+		this.edit=this.elem.childNodes[0];
+		this.edit.parent=this;
+		this.elem.style.width=w+"px";
+		this.elem.style.height=h+"px";
+//		this.elem.style.padding="3px 2px";
+		this.edit.addEventListener("change",this.Set);
+		break;
+/*	case "key":
+		this.elem.innerHTML="<webaudio-keyboard width='318' height='50' min='48' max='72'></webaudio-keyboard>";
 		this.edit=this.elem.childNodes[0];
 		this.edit.parent=this;
 		this.elem.style.padding="0px";
@@ -734,7 +840,7 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 			this.parent.parent.Process(true);
 		});
 		break;
-	case "b":
+*/	case "b":
 		this.edit=document.createElement("input");
 		this.edit.parent=this;
 		this.edit.setAttribute("class","edit");
@@ -783,16 +889,28 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 		this.elem.appendChild(this.edit);
 		this.edit.addEventListener("change",this.Set);
 		break;
-	case "tm":
+	case "key":
 		this.value=defval;
-		this.elem.style.background="#abf";
-		this.edit=document.createElement("input");
-		this.edit.setAttribute("class","edit");
-		this.edit.setAttribute("spellcheck",false);
+//		this.elem.style.background="#abf";
+//		this.edit=document.createElement("input");
+//		this.edit.setAttribute("class","edit");
+//		this.edit.setAttribute("spellcheck",false);
+//		this.edit.parent=this;
+//		this.edit.setAttribute("style","margin:0px;padding:0px;left:35px;top:1px;width:240px");
+//		this.value=this.edit.value=defval;
+//		this.elem.appendChild(this.edit);
+		this.elem.innerHTML="mml <input class='edit' spellcheck='false' style='margin:0px;padding:0px;left:35px;top:1px;width:250px'/>"
+			+"<webaudio-keyboard min='48' max='72' width='314' height='50' style='position:absolute;top:19px;left:2px'></webaudio-keyboard>";
+		this.edit=this.elem.childNodes[1];
+		this.key=this.elem.childNodes[2];
+		this.key.addEventListener("change",function(e){
+//			this.parent.parent.Note(e.note);
+			this.parent.io.inputs[1]=e.note[1];
+			this.parent.io.inputs[2]=e.note[0];
+			this.parent.Process(true);
+		}.bind(this));
 		this.edit.parent=this;
-		this.edit.setAttribute("style","margin:0px;padding:0px;left:35px;top:1px;width:240px");
 		this.value=this.edit.value=defval;
-		this.elem.appendChild(this.edit);
 		this.edit.addEventListener("change",this.Set);
 		break;
 	case "tc":
@@ -854,12 +972,16 @@ Param.prototype.Set=function(){
 //			this.parent.parent.conn[i].t.parent.SetEdit(this.value,this.parent.parent.conn[i].t.ch);
 //		}
 		break;
-	case "key":
+	case "tog":
+		this.parent.parent.io.inputs[0]=this.value;
+		this.parent.parent.sw.value=this.value;
+		break;
+//	case "key":
 //		this.parent.parent.key.value=this.value;
 //		for(var i=this.parent.parent.conn.length-1;i>=0;--i){
 //			this.parent.parent.conn[i].t.parent.SetEdit(this.value,this.parent.parent.conn[i].t.ch);
 //		}
-		break;
+//		break;
 	case "tf":
 		this.parent.parent.Rebuild();
 		break;
@@ -904,7 +1026,7 @@ Param.prototype.Set=function(){
 		this.parent.value=this.value;
 		this.parent.parent.audio.src=this.parent.value;
 		break;
-	case "tm":
+	case "key":
 		this.parent.value=this.value;
 		break;
 	}
@@ -926,8 +1048,13 @@ Param.prototype.SetEdit=function(val,i){
 		if(this.edit.setValue)
 			this.edit.setValue(val,true);
 		break;
-	case "key":
+	case "tog":
+		this.value=val;
+		if(this.edit.setValue)
+			this.edit.setValue(val,true);
 		break;
+//	case "key":
+//		break;
 	case "sw":
 		if(typeof(val)=="number")
 			this.edit.selectedIndex=val;
@@ -993,7 +1120,7 @@ Param.prototype.SetEdit=function(val,i){
 		}
 		this.ctx.stroke();
 		break;
-	case "tm":
+	case "key":
 		this.value=val;
 		this.edit.value=val;
 		break;
@@ -1061,10 +1188,12 @@ Button.prototype.Press=function(press){
 	case "playbtn":
 		if(this.press){
 			this.elem.style.background="#888";
+			this.parent.io.inputs[0]=1;
 			this.parent.Realize();
 		}
 		else{
 			this.elem.style.background="#ccc";
+			this.parent.io.inputs[0]=0;
 			this.parent.Unrealize();
 		}
 		break;
@@ -1099,7 +1228,7 @@ TitleBar.prototype.GetPos=GetPos;
 function ANode(parent,subtype,name,x,y,actx,dest){
 	var namtab={des:"destination",osc:"osc",buf:"bufsrc",str:"strmsrc",ele:"elemsrc",gai:"gain",del:"delay",pan:"panner",
 		scr:"scrproc",fil:"filter",com:"comp",sha:"shaper",con:"conv",ana:"analys",spl:"split",mer:"merge",
-		fun:"func",kno:"knob",key:"keyboard",aut:"automation",seq:"sequencer"};
+		fun:"func",kno:"knob",tog:"toggle",key:"keyboard",aut:"automation",seq:"sequencer"};
 	this.parent=parent;
 	this.type="node";
 	this.actx=actx;
@@ -1149,41 +1278,71 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 	case "key":
 		this.child=[
 			new TitleBar(this,this.name,1,1,320,19),
-			this.io=new Io(this,0, 1,21,320,19,[{x:260,y:-21,t:"ko",d:"u",ch:0},{x:290,y:-21,t:"ko",d:"u",ch:1}]),
-			this.play=new Button(this,"playbtn",16,23),
-			this.key=this.params[0]=new Param(this,"val","key",1, 1,41,320,50,0,null,0),
-			this.params[1]=new Param(this,"mml","tm",0, 41,21,250,19,30,null,
+			this.io=new Io(this,0, 1,21,318,0,[{x:260,y:-21,t:"ko",d:"u",ch:0},{x:290,y:-21,t:"ko",d:"u",ch:1},{x:318,y:10,t:"ki",d:"r",ch:0}]),
+//			this.key=this.params[1]=new Param(this,"val","key",1, 1,41,300,50,0,null,0),
+			this.params[0]=new Param(this,"mml","key",1, 1,21,318,69,30,null,
 					"t80o4l16a8f+ga8f+ga>ab<c+def+g"+"f+8def+8>f+gabagaf+ga"+
 					"g8bag8f+ef+edef+gab"+"g8bab8<c+d>ab<c+def+ga"+
 					"f+8def+8edec+def+edc+"+"d8>b<c+d8>def+gf+ef+<dc+d"+
 					">b8<dc+>b8agagf+gab<c+d"+">b8<dc+d8c+>b<c+dedc+d>b<c+"+"d1"),
+			this.play=new Button(this,"playbtn",293,23),
 		];
 		this.lbl1=document.createElement("div");
-		this.lbl1.setAttribute("style","position:absolute;top:0px;left:245px");
+		this.lbl1.setAttribute("style","position:absolute;top:-20px;left:245px");
 		this.lbl1.innerHTML="note";
 		this.lbl2=document.createElement("div");
-		this.lbl2.setAttribute("style","position:absolute;top:0px;left:280px");
+		this.lbl2.setAttribute("style","position:absolute;top:-20px;left:280px");
 		this.lbl2.innerHTML="gate";
-		this.elem.appendChild(this.lbl1);
-		this.elem.appendChild(this.lbl2);
+		this.label=document.createElement("div");
+		this.label.setAttribute("class","knoblabel");
+		this.label.style.top="95px";
+		this.label.innerHTML=this.name;
+		this.io.elem.appendChild(this.lbl1);
+		this.io.elem.appendChild(this.lbl2);
+		this.elem.appendChild(this.label);
 		this.Move(x,y,320,91);
+		this.node=null;
+		break;
+	case "tog":
+		this.child=[
+			new TitleBar(this,this.name,1,1,50,19),
+			this.io=new Io(this,0,0,0,0,0,[{x:25,y:0,t:"ko",d:"u",ch:0}]),
+			this.sw=this.params[0]=new Param(this,"val","tog",1, 1,21,44,34,0,null,0),
+		];
+		this.label=document.createElement("div");
+		this.label.setAttribute("class","knoblabel");
+		if(this.name.indexOf("_")>=0)
+			this.label.innerHTML=this.name.substring(this.name.indexOf("_")+1);
+		else
+			this.label.innerHTML=this.name;
+		this.label.style.width="50px";
+		this.label.style.top="56px";
+		this.elem.appendChild(this.label);
+		this.Move(x,y,50,56);
 		this.node=null;
 		break;
 	case "kno":
 		this.child=[
-			new TitleBar(this,this.name,1,1,68,19),
+			new TitleBar(this,this.name,1,1,70,19),
 			this.io=new Io(this,0,0,0,0,0,[{x:32,y:0,t:"ko",d:"u",ch:0}]),
 			this.params[0]=new Param(this,"min","k",0, 1,21,68,19,30,null,0),
 			this.params[1]=new Param(this,"max","k",0, 1,41,68,19,30,null,100),
 			this.params[2]=new Param(this,"step","k",0, 1,61,68,19,30,null,1),
-			this.knob=this.params[3]=new Param(this,"val","kno",1, 1,81,68,48,0,null,0),
+			this.knob=this.params[3]=new Param(this,"val","kno",1, 1,81,68,58,0,null,0),
 		];
+		this.label=document.createElement("div");
+		this.label.setAttribute("class","knoblabel");
+		if(this.name.indexOf("_")>=0)
+			this.label.innerHTML=this.name.substring(this.name.indexOf("_")+1);
+		else
+			this.label.innerHTML=this.name;
+		this.elem.appendChild(this.label);
 		this.Move(x,y,70,140);
 		this.node=null;
 		break;
 	case "fun":
 		this.child=[
-			new TitleBar(this,this.name,1,1,188,19),
+			new TitleBar(this,this.name,1,1,190,19),
 			this.io=new Io(this,0, 0,0,0,0,[{x:150,y:0,t:"ko",d:"u",ch:0},{x:189,y:30,t:"ki",d:"r",ch:0},{x:189,y:50,t:"ki",d:"r",ch:1}]),
 			this.params[0]=new Param(this,"func","tf",1, 1,21,188,39,5,null,"440*Math.pow(2,(x+y-69)/12)"),
 		];
@@ -1201,7 +1360,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "des":
 		this.child=[
-			new TitleBar(this,this.name="destination",1,1,113,19),
+			new TitleBar(this,this.name="destination",1,1,115,19),
 			this.io=new Io(this,1, 1,21,113,19,[{x:0,y:10,t:"si",d:"l",ch:0}]),
 		];
 		this.Move(x,y,115,41);
@@ -1209,7 +1368,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "osc":
 		this.child=[
-			new TitleBar(this,this.name,1,1,128,19),
+			new TitleBar(this,this.name,1,1,130,19),
 			this.io=new Io(this,0, 1,21,128,19,[{x:128,y:10,t:"so",d:"r",ch:0}]),
 			this.play=new Button(this,"playbtn",16,23),
 			this.params[0]=new Param(this,"type","sw",0, 1,41,128,19,50,["sine","square","sawtooth","triangle","custom"],"sine","Shape of waveform"),
@@ -1222,7 +1381,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "buf":
 		this.child=[
-			new TitleBar(this,this.name,1,1,158,19),
+			new TitleBar(this,this.name,1,1,160,19),
 			this.io=new Io(this,0, 1,21,158,19,[{x:158,y:10,t:"so",d:"r",ch:0}]),
 			this.play=new Button(this,"playbtn",16,23),
 			this.params[0]=new Param(this,"playbackRate","a",0, 1,41,158,19,90,null,1,"Speed at which to render the audio stream"),
@@ -1236,7 +1395,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "str":
 		this.child=[
-			new TitleBar(this,this.name,1,1,148,19),
+			new TitleBar(this,this.name,1,1,150,19),
 			this.io=new Io(this,1, 1,21,148,19,[{x:148,y:10,t:"so",d:"r",ch:0}]),
 		];
 		this.Move(x,y,150,41);
@@ -1244,7 +1403,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "ele":
 		this.child=[
-			new TitleBar(this,this.name,1,1,228,19),
+			new TitleBar(this,this.name,1,1,230,19),
 			this.io=new Io(this,0, 1,21,228,19,[{x:228,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"url","tu",0, 1,41,228,20,30,null,"samples/kerokeroshiyouyo.mp3"),
 		];
@@ -1261,7 +1420,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "gai":
 		this.child=[
-			new TitleBar(this,this.name,1,1,108,19),
+			new TitleBar(this,this.name,1,1,110,19),
 			this.io=new Io(this,0, 1,21,108,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:108,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"gain","a",1, 1,41,108,19,55,null,1,"Gain value. Phase inversion if negative"),
 		];
@@ -1270,7 +1429,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "del":
 		this.child=[
-			new TitleBar(this,this.name,1,1,118,19),
+			new TitleBar(this,this.name,1,1,120,19),
 			this.io=new Io(this,0, 1,21,118,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:118,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"delayTime","a",1, 1,41,118,19,65,null,0,"Amount of delay in seconds"),
 		];
@@ -1279,7 +1438,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "pan":
 		this.child=[
-			new TitleBar(this,this.name,1,1,173,19),
+			new TitleBar(this,this.name,1,1,175,19),
 			this.io=new Io(this,0, 1,21,173,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:173,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"panningModel","s",0, 1,41,173,19,90,["equalpower","HRTF"],"HRTF","Spatialization algorithm selection"),
 			this.params[1]=new Param(this,"distanceModel","s",0, 1,61,173,19,90,["linear","inverse","exponential"],"inverse","Reducing volume algorithm selection"),
@@ -1295,7 +1454,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "scr":
 		this.child=[
-			new TitleBar(this,this.name,1,1,178,19),
+			new TitleBar(this,this.name,1,1,180,19),
 			this.io=new Io(this,0, 1,21,178,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:178,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"onaudioprocess","ts",1, 1,41,178,39,0,null,
 				"function(ev){\n"+
@@ -1315,7 +1474,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "fil":
 		this.child=[
-			new TitleBar(this,this.name,1,1,118,19),
+			new TitleBar(this,this.name,1,1,120,19),
 			this.io=new Io(this,0, 1,21,118,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:118,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"type","s",0, 1,41,118,19,45,["lowpass","highpass","bandpass","lowshelf","highshelf","peaking","notch","allpass"],"lowpass"),
 			this.params[1]=new Param(this,"frequency","a",0, 1,61,118,19,65,null,350),
@@ -1328,7 +1487,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "com":
 		this.child=[
-			new TitleBar(this,this.name,1,1,128,19),
+			new TitleBar(this,this.name,1,1,130,19),
 			this.io=new Io(this,0, 1,21,128,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:128,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"threshold","a",0, 1,41,128,19,70,null,-24),
 			this.params[1]=new Param(this,"knee","a",0, 1,61,128,19,70,null,30),
@@ -1341,7 +1500,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "sha":
 		this.child=[
-			new TitleBar(this,this.name,1,1,138,19),
+			new TitleBar(this,this.name,1,1,140,19),
 			this.io=new Io(this,0, 1,21,138,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:138,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"oversample","s",0, 1,41,138,19,80,["none","2x","4x"],"none"),
 			this.params[1]=new Param(this,"curve","tc",1, 1,61,138,79,80,null,"[\n-0.5,-0.5,0,0.5,0.5\n]"),
@@ -1352,7 +1511,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "con":
 		this.child=[
-			new TitleBar(this,this.name,1,1,198,19),
+			new TitleBar(this,this.name,1,1,200,19),
 			this.io=new Io(this,0, 1,21,198,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:198,y:10,t:"so",d:"r",ch:0}]),
 			this.params[0]=new Param(this,"normalize","b",0, 1,41,198,19,150,null,true),
 			this.params[1]=new Param(this,"buffer","ob",1, 1,61,198,19,50,[
@@ -1374,7 +1533,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "ana":
 		this.child=[
-			new TitleBar(this,this.name,1,1,183,19),
+			new TitleBar(this,this.name,1,1,185,19),
 			this.io=new Io(this,0, 1,21,183,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:183,y:10,t:"so",d:"r",ch:0}]),
 			this.mode=new Button(this,"anabtn",60,23),
 			this.params[0]=new Param(this,"fftSize","n",0, 1,41,183,19,145,null,2048),
@@ -1409,7 +1568,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "spl":
 		this.child=[
-			new TitleBar(this,this.name,1,1,98,19),
+			new TitleBar(this,this.name,1,1,100,19),
 			this.io=new Io(this,1, 1,21,98,39,[{x:0,y:10,t:"si",d:"l",ch:0},{x:98,y:10,t:"so",d:"r",ch:0},{x:98,y:30,t:"so",d:"r",ch:1}]),
 		];
 		this.Move(x,y,100,61);
@@ -1417,7 +1576,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		break;
 	case "mer":
 		this.child=[
-			new TitleBar(this,this.name,1,1,98,19),
+			new TitleBar(this,this.name,1,1,100,19),
 			this.io=new Io(this,1, 1,21,98,39,[{x:0,y:10,t:"si",d:"l",ch:0},{x:0,y:30,t:"si",d:"l",ch:1},{x:98,y:10,t:"so",d:"r",ch:0}]),
 		];
 		this.Move(x,y,100,61);
@@ -1455,10 +1614,17 @@ ANode.prototype.Rebuild=function(){
 	}
 }
 ANode.prototype.Move=function(x,y,w,h){
-	this.x=x,this.y=y;
 	var s=this.elem.style;
-	s.left=this.x+"px";
-	s.top=this.y+"px";
+	if(typeof(graph)!="undefined"&&graph.mode){
+		this.X=x,this.Y=y;
+		s.left=this.X+"px";
+		s.top=this.Y+"px";
+	}
+	else{
+		this.x=x,this.y=y;
+		s.left=this.x+"px";
+		s.top=this.y+"px";
+	}
 	if(w&&h){
 		this.w=w,this.h=h;
 		s.width=this.w+"px";
@@ -1554,9 +1720,16 @@ ANode.prototype.Process=function(propagate){
 	case "kno":
 		this.io.outputs[0]=this.io.inputs[0];
 		break;
-	case "key":
+	case "tog":
 		this.io.outputs[0]=this.io.inputs[0];
-		this.io.outputs[1]=this.io.inputs[1];
+		break;
+	case "key":
+		if(this.io.inputs[0]&&!this.play.press)
+			this.play.Press(true);
+		if(!this.io.inputs[0]&&this.play.press)
+			this.play.Press(false);
+		this.io.outputs[0]=this.io.inputs[1];
+		this.io.outputs[1]=this.io.inputs[2];
 		break;
 	case "fun":
 		this.io.outputs[0]=this.func(this.io.inputs[0],this.io.inputs[1]);
@@ -1579,23 +1752,19 @@ ANode.prototype.Realize=function(){
 		this.SetupParam();
 	}
 	if(this.subtype=="key"){
-		this.mml=new MMLEmitter(this.actx,"/:"+this.params[1].edit.value+":/999",{defaultOctave:4});
+		this.mml=new MMLEmitter(this.actx,"/:"+this.params[0].edit.value+":/999",{defaultOctave:4});
 		this.mml.anode=this;
 		this.mml.tracks[0].on("note",function(e){
-//			this.Note([1,e.midi]);
-			this.io.inputs[0]=e.midi;
-			this.io.inputs[1]=1;
-			this.key.edit.setNote(1,e.midi);
+			this.io.inputs[1]=e.midi;
+			this.io.inputs[2]=1;
+			this.params[0].key.setNote(1,e.midi);
 			this.e=e;
 			e.noteOff(function(){
-				this.key.edit.setNote(0,this.e.midi);
-//				this.Note([0,this.e.midi]);
-				this.io.inputs[0]=this.e.midi;
-				this.io.inputs[1]=0;
-//				graph.Process(true);
+				this.params[0].key.setNote(0,this.e.midi);
+				this.io.inputs[1]=this.e.midi;
+				this.io.inputs[2]=0;
 				this.Process(true);
 			}.bind(this));
-//			graph.Process(true);
 			this.Process(true);
 		}.bind(this));
 		this.mml.start();
@@ -1620,6 +1789,9 @@ ANode.prototype.Unrealize=function(){
 	}
 	if(this.subtype=="key"){
 		this.mml.stop();
+		this.io.inputs[2]=0;
+		for(var i=48;i<72;++i)
+			this.params[0].key.setNote(0,i);
 	}
 };
 ANode.prototype.Connect=function(t,o,i){
@@ -1681,6 +1853,8 @@ function Graph(canvas,actx,dest){
 	this.dest=dest;
 	this.child=[new ANode(this,"des","destination",500,100,actx,dest)];
 	this.dragging=null;
+	this.mode=0;
+	this.play=false;
 	this.buffers=LoadBuffers(
 		actx,
 		{
@@ -1757,15 +1931,18 @@ function Graph(canvas,actx,dest){
 						}
 					}
 				}
-				o.push({"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
+				if(i==0){
+					o.push({"n":n.name,"x":n.x,"y":n.y,"mode":graph.mode});
+				}
+				else if((n.subtype=="kno"||n.subtype=="key"||n.subtype=="tog")&& typeof(n.X)=="number")
+					o.push({"n":n.name,"x":n.x,"y":n.y,"X":n.X,"Y":n.Y,"p":paramtab,"c":contab});
+				else
+					o.push({"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
 			}
 		}
 		var s=JSON.stringify(o);
-//		s=s.replace(/\"par\"/g,"p");
-//		s=s.replace(/\"con\"/g,"c");
-		s=s.replace(/\"(.)\":/g,"$1:");
-//		s=s.replace(/\"/g,"'");
-		s=s.replace(/,p:{}/g,"");
+		s=s.replace(/\"([a-zA-Z]+)\":/g,"$1:");
+		s=s.replace(/,p:\{\}/g,"");
 		s=s.replace(/,c:\[\]/g,"");
 		return {"o":o,"s":s};
 	};
@@ -1780,8 +1957,9 @@ function Graph(canvas,actx,dest){
 	};
 	this.Link=function(){
 		var o=this.GetJson().s;
-		o=encodeURIComponent(o);
-		var url=(location.protocol+"//"+location.host+location.pathname+"?p="+o);
+//		o=encodeURIComponent(o);
+		o=EncBase64(o,true);
+		var url=(location.protocol+"//"+location.host+location.pathname+"?b="+o);
 		document.getElementById("aboutpane").style.display="none";
 		document.getElementById("jspane").style.display="none";
 		document.getElementById("urlpane").style.display="block";
@@ -1810,6 +1988,8 @@ function Graph(canvas,actx,dest){
 				o.type=o.name.substring(0,n+1);
 			}
 			o.n=graph.AddNode(o.type,o.name,o.x,o.y);
+			o.n.X=o.X;
+			o.n.Y=o.Y;
 		}
 		for(var i=1;i<obj.length;++i){
 			var o=obj[i];
@@ -1844,6 +2024,10 @@ function Graph(canvas,actx,dest){
 				if(typeof(o.value)=="number")
 					o.n.params[3].SetEdit(o.value);
 			}
+			else if(o.type=="tog"){
+				if(typeof(o.value)=="number")
+					o.n.params[0].SetEdit(o.value);
+			}
 		}
 		for(var i=1;i<obj.length;++i){
 			var o=obj[i];
@@ -1866,10 +2050,12 @@ function Graph(canvas,actx,dest){
 			var n=graph.child[i];
 			for(j=n.params.length-1;j>=0;--j){
 				var p=n.params[j];
-				if(p.subtype=="kno")
+				if(p.subtype=="kno"||p.subtype=="tog")
 					p.Set.bind(p.edit)();
 			}
 		}
+		if(typeof(obj[0].mode)=="number")
+			graph.SetMode(obj[0].mode);
 		graph.Redraw();
 		document.getElementById("loading").style.display="none";
 	};
@@ -1912,37 +2098,79 @@ function Graph(canvas,actx,dest){
 			++n;
 		}
 	};
+	this.SetMode=function(m){
+		this.mode=m;
+		document.getElementById("layoutbase").style.display=m?"block":"none";
+		if(m){
+			Play();
+			document.getElementById("menunodebtn").style.display="none";
+			document.getElementById("menuctrlbtn").style.display="none";
+		}
+		else{
+			document.getElementById("menunodebtn").style.display="inline-block";
+			document.getElementById("menuctrlbtn").style.display="inline-block";
+		}
+		for(var i=this.child.length-1;i>=0;--i){
+			var node=this.child[i];
+			if(m)
+				node.Move(node.X,node.Y);
+			else
+				node.Move(node.x,node.y);
+			if(node.subtype!="kno"&&node.subtype!="tog"&&node.subtype!="key")
+				node.elem.style.display=m?"none":"block";
+			else {
+				node.elem.style.background=m?"rgba(0,0,0,0)":"#000";
+				node.elem.style.boxShadow=m?"none":"2px 2px 5px 3px rgba(0,0,0,0.4)";
+//				node.elem.style.border=(m==0)?"none":(m==1)?"1px solid #000":"none";
+				node.label.style.display=m?"block":"none";
+				for(var j=node.child.length-1;j>=0;--j){
+					var p=node.child[j];
+					if(p.subtype!="kno"&&p.subtype!="tog"&&p.subtype!="key")
+						p.elem.style.display=m?"none":"block";
+					else{
+						p.elem.style.zIndex=m?"10":"0";
+						p.elem.style.background=m?"rgba(0,0,0,0)":"linear-gradient(#eee,#ccc)";
+						p.elem.style.border=(m==1)?"1px solid #000":"none";
+						p.elem.style.borderRadius=(m==1)?"4px":"0px 0px 4px 4px";
+					}
+				}
+			}
+		}
+		graph.Redraw();
+	}
 	this.Redraw=function(){
 		var kmode;
 		this.ctx.fillStyle="#346";
 		this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
-		this.ctx.lineWidth=2;
-		for(var i=0;i<this.child.length;++i){
-			var node=this.child[i];
-			if(node.conn.length){
-				kmode=0;
-				if(node.subtype=="kno"||node.subtype=="key"||node.subtype=="fun"||node.subtype=="aut")
-					kmode=1;
-				this.ctx.beginPath();
-				for(var j=node.conn.length-1;j>=0;--j){
-					var c=node.conn[j];
-					var pos=c.o.GetPos();
-					pos.x+=c.o.w*.5;
-					pos.y+=c.o.h*.5;
-					var post=c.t.GetPos();
-					post.x+=c.t.w*.5;
-					post.y+=c.t.h*.5;
-					this.ctx.moveTo(pos.x,pos.y);
+		if(this.mode==0){
+			this.ctx.lineWidth=2;
+			for(var i=0;i<this.child.length;++i){
+				var node=this.child[i];
+				if(node.conn.length){
+					kmode=0;
+					if(node.subtype=="kno"||node.subtype=="tog"||node.subtype=="key"||node.subtype=="fun"||node.subtype=="aut")
+						kmode=1;
+					this.ctx.beginPath();
+					for(var j=node.conn.length-1;j>=0;--j){
+						var c=node.conn[j];
+						var pos=c.o.GetPos();
+						pos.x+=c.o.w*.5;
+						pos.y+=c.o.h*.5;
+						var post=c.t.GetPos();
+						post.x+=c.t.w*.5;
+						post.y+=c.t.h*.5;
+						this.ctx.moveTo(pos.x,pos.y);
+						if(kmode)
+							this.ctx.bezierCurveTo(pos.x,pos.y-50,post.x+50,post.y,post.x,post.y);
+						else
+							this.ctx.bezierCurveTo(pos.x+50,pos.y,post.x-50,post.y,post.x,post.y);
+					}
 					if(kmode)
-						this.ctx.bezierCurveTo(pos.x,pos.y-50,post.x+50,post.y,post.x,post.y);
+						this.ctx.strokeStyle="#abf";
 					else
-						this.ctx.bezierCurveTo(pos.x+50,pos.y,post.x-50,post.y,post.x,post.y);
+						this.ctx.strokeStyle="#6f6";
+					this.ctx.stroke();
 				}
-				if(kmode)
-					this.ctx.strokeStyle="#abf";
-				else
-					this.ctx.strokeStyle="#6f6";
-				this.ctx.stroke();
 			}
 		}
 		if(this.dragging&&this.dragging.type=="conn"){
@@ -2110,6 +2338,7 @@ function Graph(canvas,actx,dest){
 			return;
 		node.name=this.GetNextName(node.subtype)+"_"+nam;
 		node.child[0].elem.childNodes[0].nodeValue=nam;
+		node.label.innerHTML=nam;
 /*		document.getElementById("renametext").value=node.name;
 		var dlg=document.getElementById("renamedialog");
 		console.log(dlg.show);
@@ -2175,6 +2404,18 @@ function MenuClick(e){
 		graph.Link();
 		MenuClear();
 		break;
+	case "design":
+		MenuClear();
+		graph.SetMode(0);
+		break;
+	case "layout":
+		MenuClear();
+		graph.SetMode(1);
+		break;
+	case "test":
+		MenuClear();
+		graph.SetMode(2);
+		break;
 	case "addauto":
 		graph.AddNode("aut",null,500,300);
 		MenuClear();
@@ -2189,6 +2430,10 @@ function MenuClick(e){
 		break;
 	case "addknob":
 		graph.AddNode("kno",null,500,300);
+		MenuClear();
+		break;
+	case "addtog":
+		graph.AddNode("tog",null,500,300);
 		MenuClear();
 		break;
 	case "addseq":
@@ -2255,7 +2500,7 @@ function MouseMove(e){
 	var target=graph.HitTest(mouseX,mouseY);
 	var markok=document.getElementById("connokmark").style;
 	var markng=document.getElementById("connngmark").style;
-	if(target&&target!=graph.dragging&&target.type=="conn"){
+	if(target&&target!=graph.dragging&&target.type=="conn"&&graph.mode==0){
 		if(graph.dragging==null
 				||graph.dragging.subtype=="so"&&target.subtype=="si"
 				||graph.dragging.subtype=="si"&&target.subtype=="so"
@@ -2280,18 +2525,27 @@ function MouseMove(e){
 		markng.display="none";
 	}
 	if(graph.dragging){
-		if(graph.dragging==graph){
-			var dx=mouseX+graph.dragoffset.x;
-			var dy=mouseY+graph.dragoffset.y;
-			for(var i=graph.child.length-1;i>=0;--i){
-				var node=graph.child[i];
-				node.Move(node.x+dx-graph.lx,node.y+dy-graph.ly);
+		if(graph.mode==0){
+			if(graph.dragging==graph){
+				var dx=mouseX+graph.dragoffset.x;
+				var dy=mouseY+graph.dragoffset.y;
+				for(var i=graph.child.length-1;i>=0;--i){
+					var node=graph.child[i];
+					node.Move(node.x+dx-graph.lx,node.y+dy-graph.ly);
+				}
+				graph.lx=dx,graph.ly=dy;
 			}
-			graph.lx=dx,graph.ly=dy;
+			if(graph.dragging.type=="title")
+				graph.dragging.parent.Move(mouseX+graph.dragoffset.x,mouseY+graph.dragoffset.y);
+			graph.Redraw();
 		}
-		if(graph.dragging.type=="title")
-			graph.dragging.parent.Move(mouseX+graph.dragoffset.x,mouseY+graph.dragoffset.y);
-		graph.Redraw();
+		if(graph.mode==1){
+			if(graph.dragging.type=="param"&&(graph.dragging.subtype=="kno"||graph.dragging.subtype=="tog"||graph.dragging.subtype=="key")){
+				graph.dragging.parent.Move((mouseX+graph.dragoffset.x)&~7,(mouseY+graph.dragoffset.y-80)&~7);
+				e.stopPropagation();
+			}
+			graph.Redraw();
+		}
 	}
 	if(e.target.className!="edit")
 		e.preventDefault();
@@ -2391,25 +2645,37 @@ function MouseUp(e){
 }
 
 function Play(){
-	var isplay=false;
-	for(var i=graph.child.length-1;i>=0;--i){
-		var node=graph.child[i];
-		if(node.play&&node.play.press){
-			isplay=true;
-			break;
-		}
-	}
-	if(isplay){
+//	var isplay=false;
+//	for(var i=graph.child.length-1;i>=0;--i){
+//		var node=graph.child[i];
+//		if(node.play&&node.play.press){
+//			isplay=true;
+//			break;
+//		}
+//	}
+	var b=document.getElementById("playbtn");
+	if(graph.play){
+		graph.play=false;
+		b.innerHTML="Start";
 		for(var i=graph.child.length-1;i>=0;--i){
 			var node=graph.child[i];
-			if(node.play&&node.play.press)
+			if(node.subtype=="key"){
+				node.io.inputs[0]=0;
+			}
+			else if(node.play&&node.play.press){
 				node.play.Press(false);
+			}
 		}
 	}
 	else{
+		graph.play=true;
+		b.innerHTML="Stop";
 		for(var i=graph.child.length-1;i>=0;--i){
 			var node=graph.child[i];
-			if(node.play){
+			if(node.subtype=="key"){
+				node.io.inputs[0]=1;
+			}
+			else if(node.play){
 				if(!node.play.press)
 					node.play.Press(true);
 			}
@@ -2430,9 +2696,10 @@ function Init(){
 	patch=null;
 	for(var i=0;i<vars.length;++i){
 		var l=vars[i].split("=");
-		if(l[0]=="p"){
-			patch=l[1].replace(/\+/g," ");
-		}
+		if(l[0]=="p")
+			patch=decodeURIComponent(l[1].replace(/\+/g," "));
+		if(l[0]=="b")
+			patch=DecBase64(l[1],true);
 	}
 	intid=setInterval(StartIfReady,100);
 }
@@ -2444,7 +2711,7 @@ function StartIfReady(){
 }
 function Start(){
 	if(patch){
-		patch=eval(decodeURIComponent(patch));
+		patch=eval(patch);
 		graph.Load(patch);
 	}
 	else
