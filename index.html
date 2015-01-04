@@ -27,10 +27,9 @@ svg{
 }
 #base{
 	position:relative;
-	width:100%;
-	height:100%;
 	background:#346;
 	margin:0;
+	overflow:hidden;
 }
 #canvas{
 	position:absolute;
@@ -51,6 +50,7 @@ svg{
 	width:170px;
 }
 .menuitem{
+	z-index:200;
 	width:160px;
 	padding:5px;
 	margin:0px;
@@ -205,8 +205,8 @@ svg{
 #layoutbase{
 	position:absolute;
 	display:none;
-	left:80px;
-	top:80px;
+	left:128px;
+	top:64px;
 	width:800px;
 	height:600px;
 	background:linear-gradient(#888 0%,#eee 5%,#ccc 97%,#444 100%);
@@ -336,6 +336,9 @@ dialog::backdrop {
 .conn{
 	position:absolute;
 }
+.conn .mark{
+	display:none;
+}
 #connokmark{
 	position:absolute;
 	width:20px;
@@ -397,8 +400,8 @@ dialog::backdrop {
 	<canvas id="canvas" width="1024" height="768"></canvas>
 	<div id="layoutbase"></div>
 	<div id="ins"></div>
-	<div id="connokmark"></div>
-	<div id="connngmark"><svg width="20" height="20"><path d='M0,0 L20,20 M0,20,L20,0' stroke="#f00" stroke-width="2"/></svg></div>
+	<div id="connokmark" class="conn"></div>
+	<div id="connngmark" class="conn"><svg width="20" height="20"><path d='M0,0 L20,20 M0,20,L20,0' stroke="#f00" stroke-width="2"/></svg></div>
 </div>
 	<textarea id="text" spellcheck="false"></textarea>
 	<datalist id="urllist">

@@ -678,26 +678,35 @@ function Connector(parent,subtype,dir,x,y,ch){
 	this.ch=ch;
 	this.elem=document.createElement("div");
 	this.elem.setAttribute("class","conn");
+	this.elem.parent=this;
 	var st=this.elem.style;
 	var col="#6f6";
 	if(subtype=="ki"||subtype=="ko")
 		col="#ccf";
 	switch(dir){
 	case "u":
-		this.elem.innerHTML="<svg><path d='M2,10 C2,0 17,0 17,10' fill='"+col+"'/></svg>";
+//		var s="<svg><path d='M2,10 C2,0 17,0 17,10' fill='"+col+"'/><circle cx='14' cy='10' r='6' stroke='#08f' stroke-width='2' fill='none'/><path d='M10,5 L20,16 M10,15 L20,4' stroke='#f00' stroke-width='2'/></svg>";
+		var s="<svg><path d='M2,10 C2,0 17,0 17,10' fill='"+col+"'/></svg>";
 		break;
 	case "r":
-		this.elem.innerHTML="<svg><path d='M11,2 C20,2 20,17 11,17' fill='"+col+"'/></svg>";
+//		var s="<svg><path d='M11,2 C20,2 20,17 11,17' fill='"+col+"'/><circle cx='14' cy='10' r='6' stroke='#08f' stroke-width='2' fill='none'/><path d='M10,5 L20,16 M10,15 L20,4' stroke='#f00' stroke-width='2'/></svg>";
+		var s="<svg><path d='M11,2 C20,2 20,17 11,17' fill='"+col+"'/><path class='mark' d='M10,5 L20,16 M10,15 L20,4' stroke='#f00' stroke-width='2'/></svg>";
 		break;
 	case "l":
-		this.elem.innerHTML="<svg><path d='M9,2 C0,2 0,17 9,17' fill='"+col+"'/></svg>";
+//		var s="<svg><path d='M9,2 C0,2 0,17 9,17' fill='"+col+"'/><circle cx='10' cy='9' r='5' stroke='#08f' stroke-width='2' fill='none'/><path d='M6,5 L16,16 M6,15 L16,4' stroke='#f00' stroke-width='2'/></svg>";
+		var s="<svg><path d='M9,2 C0,2 0,17 9,17' fill='"+col+"'/></svg>";
 		break;
 	}
+//	s+="<path d='M0,0 L20,20 M0,20,L20,0' stroke='#f00' stroke-width='2'/></svg>";
+	this.elem.innerHTML=s;
+//	this.elem.childNodes[0].childNodes[1].style.display="none";
+//	this.elem.childNodes[0].childNodes[2].style.display="none";
 	st.left=this.x+"px";
 	st.top=this.y+"px";
 	st.width=this.w+"px";
 	st.height=this.h+"px";
 	parent.elem.appendChild(this.elem);
+	this.elem.childNodes[0].parent=this.elem.childNodes[0].childNodes[0].parent=this;
 }
 Connector.prototype.HitTest=HitTest;
 Connector.prototype.GetPos=GetPos;
@@ -813,7 +822,7 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 	case "kno":
 		this.elem.innerHTML="<webaudio-knob diameter='48'></webaudio-knob>";
 		this.edit=this.elem.childNodes[0];
-		this.edit.parent=this;
+		this.elem.parent=this.edit.parent=this;
 		this.elem.style.width="48px";
 		this.elem.style.height="48px";
 		this.elem.style.padding="5px 10px";
@@ -822,7 +831,7 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 	case "tog":
 		this.elem.innerHTML="<webaudio-switch width='24' height='24' type='toggle' style='position:absolute;top:5px;left:13px'></webaudio-switch>";
 		this.edit=this.elem.childNodes[0];
-		this.edit.parent=this;
+		this.elem.parent=this.edit.parent=this;
 		this.elem.style.width=w+"px";
 		this.elem.style.height=h+"px";
 //		this.elem.style.padding="3px 2px";
@@ -903,13 +912,14 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 			+"<webaudio-keyboard min='48' max='72' width='314' height='50' style='position:absolute;top:19px;left:2px'></webaudio-keyboard>";
 		this.edit=this.elem.childNodes[1];
 		this.key=this.elem.childNodes[2];
+		this.elem.parent=this.edit.parent=this;
 		this.key.addEventListener("change",function(e){
 //			this.parent.parent.Note(e.note);
 			this.parent.io.inputs[1]=e.note[1];
 			this.parent.io.inputs[2]=e.note[0];
 			this.parent.Process(true);
 		}.bind(this));
-		this.edit.parent=this;
+		this.elem.parent=this.key.parent=this;
 		this.value=this.edit.value=defval;
 		this.edit.addEventListener("change",this.Set);
 		break;
@@ -1001,7 +1011,6 @@ Param.prototype.Set=function(){
 			if(node.node)
 				node.node.setPeriodicWave(graph.actx.createPeriodicWave(new Float32Array(tab.real),new Float32Array(tab.imag)));
 			node.params[3].SetEdit(node.params[3].value);
-//			console.log(node.params[3].SetEdit);
 		}
 		else{
 			node.params[3].elem.style.display="none";
@@ -1149,6 +1158,7 @@ function Button(parent,type,x,y){
 	case  "nodebtn":
 		this.parent=parent,this.type=type,this.x=x,this.y=y,this.w=12,this.h=12;
 		this.elem=document.createElement("div");
+		this.elem.parent=this;
 		this.elem.setAttribute("class","nodebtn");
 		this.elem.setAttribute("style","left:"+this.x+"px;top:"+this.y+"px;width:"+this.w+"px;height:"+this.h+"px");
 		break;
@@ -1207,6 +1217,7 @@ function TitleBar(parent,name,x,y,w,h){
 	this.type="title";
 	this.parent=parent;
 	this.elem=document.createElement("div");
+	this.elem.parent=this;
 	var ti=name;
 	if(ti.indexOf("_")>=0)
 		ti=ti.substring(ti.indexOf("_")+1);
@@ -1218,8 +1229,9 @@ function TitleBar(parent,name,x,y,w,h){
 	st.width=(w-20)+"px";
 	if(name=="destination")
 		this.child=[];
-	else
+	else{
 		this.child=[new Button(this,"nodebtn",2,2)];
+	}
 	parent.elem.appendChild(this.elem);
 }
 TitleBar.prototype.HitTest=HitTest;
@@ -1273,6 +1285,9 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 			this.params[1]=new Param(this,"off","sa",1, 1,101,188,39,5,null,"lr\n0\nt"),
 		];
 		this.Move(x,y,190,140);
+		this.node=null;
+		break;
+	case "tex":
 		this.node=null;
 		break;
 	case "key":
@@ -1616,9 +1631,15 @@ ANode.prototype.Rebuild=function(){
 ANode.prototype.Move=function(x,y,w,h){
 	var s=this.elem.style;
 	if(typeof(graph)!="undefined"&&graph.mode){
-		this.X=x,this.Y=y;
-		s.left=this.X+"px";
-		s.top=this.Y+"px";
+		switch(this.subtype){
+		case "kno":
+		case "tog":
+		case "key":
+			this.X=x,this.Y=y;
+			s.left=this.X+"px";
+			s.top=this.Y+"px";
+			break;
+		}
 	}
 	else{
 		this.x=x,this.y=y;
@@ -1848,6 +1869,7 @@ function Graph(canvas,actx,dest){
 	this.base=document.getElementById("base");
 	this.ins=document.getElementById("ins");
 	this.canvas=document.getElementById("canvas");
+	this.canvas.parent=this;
 	this.ctx=this.canvas.getContext("2d");
 	this.actx=actx;
 	this.dest=dest;
@@ -1934,10 +1956,20 @@ function Graph(canvas,actx,dest){
 				if(i==0){
 					o.push({"n":n.name,"x":n.x,"y":n.y,"mode":graph.mode});
 				}
-				else if((n.subtype=="kno"||n.subtype=="key"||n.subtype=="tog")&& typeof(n.X)=="number")
-					o.push({"n":n.name,"x":n.x,"y":n.y,"X":n.X,"Y":n.Y,"p":paramtab,"c":contab});
-				else
+				else if(typeof(n.X)!="number") {
 					o.push({"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
+				}
+				else{
+					switch(n.subtype){
+					case "kno":
+						o.push({"n":n.name,"x":n.x,"y":n.y,"X":n.X,"Y":n.Y+17,"p":paramtab,"c":contab});
+						break;
+					case "tog":
+					case "key":
+						o.push({"n":n.name,"x":n.x,"y":n.y,"X":n.X,"Y":n.Y-43,"p":paramtab,"c":contab});
+						break;
+					}
+				}
 			}
 		}
 		var s=JSON.stringify(o);
@@ -1985,11 +2017,23 @@ function Graph(canvas,actx,dest){
 				for(n=o.name.length-1;n>=0;--n)
 					if(!(o.name[n]=="_"||(o.name[n]>="0"&&o.name[n]<="9")))
 						break;
-				o.type=o.name.substring(0,n+1);
+				o.type=o.name.substring(0,3);
 			}
 			o.n=graph.AddNode(o.type,o.name,o.x,o.y);
 			o.n.X=o.X;
 			o.n.Y=o.Y;
+			if(typeof(o.Y)=="number"){
+				o.n.X=o.X;
+				switch(o.type){
+				case "kno":
+					o.n.Y=o.Y-81+64;
+					break;
+				case "tog":
+				case "key":
+					o.n.Y=o.Y-21+64;
+					break;
+				}
+			}
 		}
 		for(var i=1;i<obj.length;++i){
 			var o=obj[i];
@@ -2102,7 +2146,8 @@ function Graph(canvas,actx,dest){
 		this.mode=m;
 		document.getElementById("layoutbase").style.display=m?"block":"none";
 		if(m){
-			Play();
+			if(m==2)
+				Play(1);
 			document.getElementById("menunodebtn").style.display="none";
 			document.getElementById("menuctrlbtn").style.display="none";
 		}
@@ -2131,7 +2176,7 @@ function Graph(canvas,actx,dest){
 						p.elem.style.zIndex=m?"10":"0";
 						p.elem.style.background=m?"rgba(0,0,0,0)":"linear-gradient(#eee,#ccc)";
 						p.elem.style.border=(m==1)?"1px solid #000":"none";
-						p.elem.style.borderRadius=(m==1)?"4px":"0px 0px 4px 4px";
+						p.elem.style.borderRadius=(m==1)?"0px":"0px 0px 4px 4px";
 					}
 				}
 			}
@@ -2330,6 +2375,8 @@ function Graph(canvas,actx,dest){
 	this.Resize=function(){
 		graph.canvas.width=graph.w=window.innerWidth;
 		graph.canvas.height=graph.h=window.innerHeight-55;
+		document.getElementById("base").style.width=graph.w+"px";
+		document.getElementById("base").style.height=graph.h+"px";
 		graph.Redraw("Rename");
 	};
 	this.Rename=function(node){
@@ -2484,7 +2531,7 @@ function MouseDown(e){
 	var rc=graph.base.getBoundingClientRect();
 	mouseX=Math.floor(e.clientX-rc.left);
 	mouseY=Math.floor(e.clientY-rc.top);
-	graph.dragging=graph.HitTest(mouseX,mouseY);
+	graph.dragging=e.target.parent;
 	if(graph.dragging){
 		var pos=graph.dragging.GetPos();
 		graph.dragoffset={x:pos.x-mouseX,y:pos.y-mouseY};
@@ -2497,9 +2544,10 @@ function MouseMove(e){
 	var rc=graph.base.getBoundingClientRect();
 	mouseX=Math.floor(e.clientX-rc.left);
 	mouseY=Math.floor(e.clientY-rc.top);
-	var target=graph.HitTest(mouseX,mouseY);
-	var markok=document.getElementById("connokmark").style;
-	var markng=document.getElementById("connngmark").style;
+//;	var target=graph.HitTest(mouseX,mouseY);
+	var target=e.target.parent;
+	var markok=document.getElementById("connokmark");
+	var markng=document.getElementById("connngmark");
 	if(target&&target!=graph.dragging&&target.type=="conn"&&graph.mode==0){
 		if(graph.dragging==null
 				||graph.dragging.subtype=="so"&&target.subtype=="si"
@@ -2507,22 +2555,25 @@ function MouseMove(e){
 				||graph.dragging.subtype=="ko"&&target.subtype=="ki"
 				||graph.dragging.subtype=="ki"&&target.subtype=="ko"){
 			var p=target.GetPos();
-			markok.display="block";
-			markok.left=(p.x-2)+"px";
-			markok.top=(p.y-2)+"px";
-			markng.display="none";
+
+			markok.parent=e.target.parent;
+			markok.style.display="block";
+			markok.style.left=(p.x-2)+"px";
+			markok.style.top=(p.y-2)+"px";
+			markng.style.display="none";
 		}
 		else if(graph.dragging.type=="conn"){
 			var p=target.GetPos();
-			markng.display="block";
-			markng.left=(p.x-2)+"px";
-			markng.top=(p.y-2)+"px";
-			markok.display="none";
+			markng.parent=target;
+			markng.style.display="block";
+			markng.style.left=(p.x-2)+"px";
+			markng.style.top=(p.y-2)+"px";
+			markok.style.display="none";
 		}
 	}
 	else{
-		markok.display="none";
-		markng.display="none";
+		markok.style.display="none";
+		markng.style.display="none";
 	}
 	if(graph.dragging){
 		if(graph.mode==0){
@@ -2540,8 +2591,21 @@ function MouseMove(e){
 			graph.Redraw();
 		}
 		if(graph.mode==1){
-			if(graph.dragging.type=="param"&&(graph.dragging.subtype=="kno"||graph.dragging.subtype=="tog"||graph.dragging.subtype=="key")){
-				graph.dragging.parent.Move((mouseX+graph.dragoffset.x)&~7,(mouseY+graph.dragoffset.y-80)&~7);
+			if(graph.dragging.type=="param"){
+				var dy=0;
+				switch(graph.dragging.subtype){
+				case "kno":
+					dy=81;
+					break;
+				case "tog":
+					dy=21;
+					break;
+				case "key":
+					dy=21;
+					break;
+				}
+				if(dy)
+					graph.dragging.parent.Move((mouseX+graph.dragoffset.x)&~7,((mouseY+graph.dragoffset.y)&~7)-dy);
 				e.stopPropagation();
 			}
 			graph.Redraw();
@@ -2554,7 +2618,8 @@ function MouseUp(e){
 	var rc=graph.base.getBoundingClientRect();
 	mouseX=Math.floor(e.clientX-rc.left);
 	mouseY=Math.floor(e.clientY-rc.top);
-	var target=graph.HitTest(mouseX,mouseY);
+	var target=e.target.parent;
+//	var target=graph.HitTest(mouseX,mouseY);
 	if(target){
 		if(target==graph.dragging){
 			switch(target.type){
@@ -2644,7 +2709,7 @@ function MouseUp(e){
 	graph.Redraw();
 }
 
-function Play(){
+function Play(p){
 //	var isplay=false;
 //	for(var i=graph.child.length-1;i>=0;--i){
 //		var node=graph.child[i];
@@ -2653,6 +2718,8 @@ function Play(){
 //			break;
 //		}
 //	}
+	if(typeof(p)!="undefined")
+		graph.play=!p;
 	var b=document.getElementById("playbtn");
 	if(graph.play){
 		graph.play=false;
