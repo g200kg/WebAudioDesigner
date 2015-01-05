@@ -1877,6 +1877,9 @@ function Graph(canvas,actx,dest){
 	this.dragging=null;
 	this.mode=0;
 	this.play=false;
+	this.layoutw=800;
+	this.layouth=600;
+	document.getElementById("wmark").parent=this;
 	this.buffers=LoadBuffers(
 		actx,
 		{
@@ -1954,7 +1957,7 @@ function Graph(canvas,actx,dest){
 					}
 				}
 				if(i==0){
-					o.push({"n":n.name,"x":n.x,"y":n.y,"mode":graph.mode});
+					o.push({"n":n.name,"x":n.x,"y":n.y,"mode":graph.mode,"ver":1,"W":graph.layoutw,"H":graph.layouth});
 				}
 				else if(typeof(n.X)!="number") {
 					o.push({"n":n.name,"x":n.x,"y":n.y,"p":paramtab,"c":contab});
@@ -1962,11 +1965,11 @@ function Graph(canvas,actx,dest){
 				else{
 					switch(n.subtype){
 					case "kno":
-						o.push({"n":n.name,"x":n.x,"y":n.y,"X":n.X,"Y":n.Y+17,"p":paramtab,"c":contab});
+						o.push({"n":n.name,"x":n.x,"y":n.y,"X":n.X-128,"Y":n.Y+17,"p":paramtab,"c":contab});
 						break;
 					case "tog":
 					case "key":
-						o.push({"n":n.name,"x":n.x,"y":n.y,"X":n.X,"Y":n.Y-43,"p":paramtab,"c":contab});
+						o.push({"n":n.name,"x":n.x,"y":n.y,"X":n.X-128,"Y":n.Y-43,"p":paramtab,"c":contab});
 						break;
 					}
 				}
@@ -2006,6 +2009,21 @@ function Graph(canvas,actx,dest){
 		document.getElementById("loading").style.display="block";
 		this.New();
 		this.child[0].Move(obj[0].x,obj[0].y);
+		var ver=obj[0].ver;
+		if(typeof(ver)=="undefined")
+			ver=0;
+		this.layoutw=obj[0].W;
+		this.layouth=obj[0].H;
+		if(!this.layoutw){
+			this.layoutw=800;
+			this.layouth=600;
+		}
+		var b=document.getElementById("layoutbase");
+		b.style.width=this.layoutw+"px";
+		b.style.height=this.layouth+"px";
+		b=document.getElementById("wmark");
+		b.style.left=(this.layoutw-8)+"px";
+		b.style.top=(this.layouth-8)+"px";
 		for(var i=1;i<obj.length;++i){
 			var o=obj[i];
 			if(!o.type) o.type=o.t;
@@ -2023,7 +2041,7 @@ function Graph(canvas,actx,dest){
 			o.n.X=o.X;
 			o.n.Y=o.Y;
 			if(typeof(o.Y)=="number"){
-				o.n.X=o.X;
+				o.n.X=o.X+(ver>=1?128:0);
 				switch(o.type){
 				case "kno":
 					o.n.Y=o.Y-81+64;
@@ -2145,6 +2163,7 @@ function Graph(canvas,actx,dest){
 	this.SetMode=function(m){
 		this.mode=m;
 		document.getElementById("layoutbase").style.display=m?"block":"none";
+		document.getElementById("wmark").style.display=(m==1)?"block":"none";
 		if(m){
 			if(m==2)
 				Play(1);
@@ -2591,6 +2610,16 @@ function MouseMove(e){
 			graph.Redraw();
 		}
 		if(graph.mode==1){
+			if(graph.dragging==graph){
+				var base=document.getElementById("layoutbase");
+				graph.layoutw=(mouseX-128)&~7;
+				graph.layouth=(mouseY-64)&~7;
+				base.style.width=graph.layoutw+"px";
+				base.style.height=graph.layouth+"px";
+				var wm=document.getElementById("wmark");
+				wm.style.left=(graph.layoutw-8)+"px";
+				wm.style.top=(graph.layouth-8)+"px";
+			}
 			if(graph.dragging.type=="param"){
 				var dy=0;
 				switch(graph.dragging.subtype){

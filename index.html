@@ -389,6 +389,14 @@ dialog::backdrop {
 #header img{
 	margin-right:20px
 }
+#wmark{
+	position:absolute;
+	top:592px;
+	left:792px;
+	border:1px solid #000;
+	width:16px;
+	height:16px;
+}
 </style>
 </head>
 <body onload="Init()">
@@ -398,7 +406,9 @@ dialog::backdrop {
 </div>
 <div id="base">
 	<canvas id="canvas" width="1024" height="768"></canvas>
-	<div id="layoutbase"></div>
+	<div id="layoutbase">
+		<div id="wmark"></div>
+	</div>
 	<div id="ins"></div>
 	<div id="connokmark" class="conn"></div>
 	<div id="connngmark" class="conn"><svg width="20" height="20"><path d='M0,0 L20,20 M0,20,L20,0' stroke="#f00" stroke-width="2"/></svg></div>
