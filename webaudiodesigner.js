@@ -924,6 +924,7 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 		this.edit.addEventListener("change",this.Set);
 		break;
 	case "tc":
+		this.elem.parent=this;
 		this.value=defval;
 		this.cv=document.createElement("canvas");
 		this.cv.setAttribute("width","64");
@@ -935,10 +936,12 @@ function Param(parent,name,subtype,flags,x,y,w,h,vx,option,defval,tooltip){
 		this.ctx.fillRect(0,0,64,64);
 		break;
 	case "ts":
+		this.elem.parent=this;
 		this.value=defval;
 		break;
 	case "tp":
 		this.value=defval;
+		this.elem.parent=this;
 		this.cv=document.createElement("canvas");
 		this.cv.setAttribute("width","64");
 		this.cv.setAttribute("height","64");
@@ -2550,6 +2553,7 @@ function MouseDown(e){
 	var rc=graph.base.getBoundingClientRect();
 	mouseX=Math.floor(e.clientX-rc.left);
 	mouseY=Math.floor(e.clientY-rc.top);
+	console.log(e.target);
 	graph.dragging=e.target.parent;
 	if(graph.dragging){
 		var pos=graph.dragging.GetPos();
@@ -2649,6 +2653,7 @@ function MouseUp(e){
 	mouseY=Math.floor(e.clientY-rc.top);
 	var target=e.target.parent;
 //	var target=graph.HitTest(mouseX,mouseY);
+			console.log(graph.dragging,e.target);
 	if(target){
 		if(target==graph.dragging){
 			switch(target.type){
