@@ -1256,7 +1256,6 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 	this.name=name;
 	if(this.name==null)
 		this.name=graph.GetNextName(this.subtype);
-//		this.name=graph.GetNextName(namtab[this.subtype]);
 	switch(this.subtype){
 	case "seq":
 		this.child=[
@@ -1387,8 +1386,8 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 	case "osc":
 		this.child=[
 			new TitleBar(this,this.name,1,1,130,19),
-			this.io=new Io(this,0, 1,21,128,19,[{x:128,y:10,t:"so",d:"r",ch:0}]),
-			this.play=new Button(this,"playbtn",16,23),
+			this.io=new Io(this,0, 1,21,128,19,[{x:128,y:10,t:"so",d:"r",ch:0},{x:128,y:-10,t:"ki",d:"r",ch:0}]),
+			this.play=new Button(this,"playbtn",100,5),
 			this.params[0]=new Param(this,"type","sw",0, 1,41,128,19,50,["sine","square","sawtooth","triangle","custom"],"sine","Shape of waveform"),
 			this.params[1]=new Param(this,"frequency","a",0, 1,61,128,19,65,null,440,"Frequency in Hz"),
 			this.params[2]=new Param(this,"detune","a",1, 1,81,128,19,65,null,0,"Frequency offset in Cent"),
@@ -1400,8 +1399,8 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 	case "buf":
 		this.child=[
 			new TitleBar(this,this.name,1,1,160,19),
-			this.io=new Io(this,0, 1,21,158,19,[{x:158,y:10,t:"so",d:"r",ch:0}]),
-			this.play=new Button(this,"playbtn",16,23),
+			this.io=new Io(this,0, 1,21,158,19,[{x:158,y:10,t:"so",d:"r",ch:0},{x:158,y:-10,t:"ki",d:"r",ch:0}]),
+			this.play=new Button(this,"playbtn",130,5),
 			this.params[0]=new Param(this,"playbackRate","a",0, 1,41,158,19,90,null,1,"Speed at which to render the audio stream"),
 			this.params[1]=new Param(this,"loop","b",0, 1,61,158,19,90,null,false,"Audio data should play in a loop"),
 			this.params[2]=new Param(this,"loopStart","n",0, 1,81,158,19,90,null,0,"Looping start position in seconds"),
@@ -1746,6 +1745,13 @@ ANode.prototype.Process=function(propagate){
 		break;
 	case "tog":
 		this.io.outputs[0]=this.io.inputs[0];
+		break;
+	case "osc":
+	case "buf":
+		if(this.io.inputs[0]&&!this.play.press)
+			this.play.Press(true);
+		if(!this.io.inputs[0]&&this.play.press)
+			this.play.Press(false);
 		break;
 	case "key":
 		if(this.io.inputs[0]&&!this.play.press)
@@ -2553,7 +2559,6 @@ function MouseDown(e){
 	var rc=graph.base.getBoundingClientRect();
 	mouseX=Math.floor(e.clientX-rc.left);
 	mouseY=Math.floor(e.clientY-rc.top);
-	console.log(e.target);
 	graph.dragging=e.target.parent;
 	if(graph.dragging){
 		var pos=graph.dragging.GetPos();
@@ -2653,7 +2658,6 @@ function MouseUp(e){
 	mouseY=Math.floor(e.clientY-rc.top);
 	var target=e.target.parent;
 //	var target=graph.HitTest(mouseX,mouseY);
-			console.log(graph.dragging,e.target);
 	if(target){
 		if(target==graph.dragging){
 			switch(target.type){
