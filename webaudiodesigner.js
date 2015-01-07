@@ -1752,7 +1752,7 @@ ANode.prototype.Process=function(propagate){
 			this.play.Press(true);
 		if(!this.io.inputs[0]&&this.play.press)
 			this.play.Press(false);
-		break;
+		return;
 	case "key":
 		if(this.io.inputs[0]&&!this.play.press)
 			this.play.Press(true);
