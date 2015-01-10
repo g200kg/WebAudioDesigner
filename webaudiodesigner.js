@@ -1810,12 +1810,19 @@ ANode.prototype.Unrealize=function(){
 			this.node.disconnect();
 			for(var i=graph.child.length-1;i>=0;--i){
 				var n=graph.child[i];
+				var discon=false;
 				for(var j=n.conn.length-1;j>=0;--j){
 					if(n.conn[j].t.parent.parent==this){
 						var o=n.conn[j].o.parent.parent;
-						if(o.node)
+						if(o.node){
+							discon=true;
 							o.node.disconnect();
+						}
 					}
+				}
+				if(discon){
+					for(var j=n.conn.length-1;j>=0;--j)
+						graph.Reconnect(o);
 				}
 			}
 		}
@@ -2390,9 +2397,8 @@ function Graph(canvas,actx,dest){
 			}
 		}
 	};
-	this.Reconnect=function(){
-		for(var i=1;i<this.child.length;++i){
-			var node=this.child[i];
+	this.Reconnect=function(node){
+		function conn(node){
 			for(var j=0;j<node.conn.length;++j){
 				var c=node.conn[j];
 				if(c.t.parent.parent.node){
@@ -2409,6 +2415,12 @@ function Graph(canvas,actx,dest){
 				}
 			}
 		}
+		if(!node){
+			for(var i=1;i<this.child.length;++i)
+				conn(this.child[i]);
+		}
+		else
+			conn(node);
 	};
 	this.Resize=function(){
 		graph.canvas.width=graph.w=window.innerWidth;
