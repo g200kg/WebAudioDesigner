@@ -1808,7 +1808,16 @@ ANode.prototype.Unrealize=function(){
 		if(this.node){
 			this.node.stop(0);
 			this.node.disconnect();
-			delete this.node;
+			for(var i=graph.child.length-1;i>=0;--i){
+				var n=graph.child[i];
+				for(var j=n.conn.length-1;j>=0;--j){
+					if(n.conn[j].t.parent.parent==this){
+						var o=n.conn[j].o.parent.parent;
+						if(o.node)
+							o.node.disconnect();
+					}
+				}
+			}
 		}
 		this.node=null;
 	}
@@ -2281,6 +2290,7 @@ function Graph(canvas,actx,dest){
 		while(this.child.length>1){
 			this.DelNode(this.child[1]);
 		}
+		this.child[0].Move(640,100);
 		this.Redraw();
 	};
 	this.DelNode=function(node){
