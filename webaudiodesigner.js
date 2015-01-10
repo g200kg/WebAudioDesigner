@@ -1808,6 +1808,7 @@ ANode.prototype.Unrealize=function(){
 		if(this.node){
 			this.node.stop(0);
 			this.node.disconnect();
+			this.node=null;
 			for(var i=graph.child.length-1;i>=0;--i){
 				var n=graph.child[i];
 				var discon=false;
