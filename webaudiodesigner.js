@@ -1804,7 +1804,7 @@ ANode.prototype.Realize=function(){
 		this.node.start(0);
 }
 ANode.prototype.Unrealize=function(){
-	if(this.subtype=="osc"){
+	if(this.subtype=="osc"||this.subtype=="buf"){
 		if(this.node){
 			this.node.stop(0);
 			this.node.disconnect();
@@ -1822,16 +1822,10 @@ ANode.prototype.Unrealize=function(){
 					}
 				}
 				if(discon){
-					for(var j=n.conn.length-1;j>=0;--j)
-						graph.Reconnect(o);
+					graph.Reconnect(o);
 				}
 			}
 		}
-		this.node=null;
-	}
-	if(this.subtype=="buf"){
-		if(this.node)
-			this.node.stop(0);
 		this.node=null;
 	}
 	if(this.subtype=="key"){
