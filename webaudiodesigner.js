@@ -1,5 +1,10 @@
 
-var defaultpatch=[{"type":"destination","name":"destination","x":568,"y":86,"params":[],"connect":[]},{"type":"osc","name":"osc2","x":384,"y":164,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"440"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"destination","o":0,"i":0}]},{"type":"gain","name":"gain1","x":200,"y":300,"params":[{"name":"gain","type":"a","value":"1000"}],"connect":[{"t":"osc2.detune","o":0}]},{"type":"osc","name":"osc1","x":49,"y":150,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"2"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"gain1","o":0,"i":0}]}];
+var defaultpatch=[
+	{"type":"destination","name":"destination","x":568,"y":86,"params":[],"connect":[]},
+	{"type":"osc","name":"osc2","x":384,"y":164,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"440"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"destination","o":0,"i":0}]},
+	{"type":"gain","name":"gai1","x":200,"y":300,"params":[{"name":"gain","type":"a","value":"1000"}],"connect":[{"t":"osc2.detune","o":0}]},
+	{"type":"osc","name":"osc1","x":49,"y":150,"params":[{"name":"type","type":"s","value":"sine"},{"name":"frequency","type":"a","value":"2"},{"name":"detune","type":"a","value":"0"}],"connect":[{"t":"gai1","o":0,"i":0}]}
+];
 
 function HitTest(x,y){
 	if(graph.mode){
@@ -234,30 +239,30 @@ function ExportJs(wadobj){
 				if(p=="custom"){
 				}
 				else
-					js+=sp+"this."+node.name+"."+j+" = \""+p+"\";\n";
+					js+=sp+"this.nodes."+node.name+"."+j+" = \""+p+"\";\n";
 				break;
 			case "s":
-				js+=sp+"this."+node.name+"."+j+" = \""+p+"\";\n";
+				js+=sp+"this.nodes."+node.name+"."+j+" = \""+p+"\";\n";
 				break;
 			case "n":
 			case "b":
-				js+=sp+"this."+node.name+"."+j+" = "+p+";\n";
+				js+=sp+"this.nodes."+node.name+"."+j+" = "+p+";\n";
 				break;
 			case "a":
-				js+=sp+"this."+node.name+"."+j+".value = "+p+";\n";
+				js+=sp+"this.nodes."+node.name+"."+j+".value = "+p+";\n";
 				break;
 			case "tc":
-				js+=sp+"this."+node.name+"."+j+" = new Float32Array("+p+");\n";
+				js+=sp+"this.nodes."+node.name+"."+j+" = new Float32Array("+p+");\n";
 				break;
 			case "ts":
-				js+=sp+"this."+node.name+"."+j+" = \n"+p+";\n";
+				js+=sp+"this.nodes."+node.name+"."+j+" = \n"+p+";\n";
 				break;
 			case "tp":
 				js+=sp+"var p={"+p.replace(/\n/g," ")+"};\n";
-				js+=sp+"this."+node.name+".setPeriodicWave(this.audioctx.createPeriodicWave(new Float32Array(p.real),new Float32Array(p.imag)));\n";
+				js+=sp+"this.nodes."+node.name+".setPeriodicWave(this.audioctx.createPeriodicWave(new Float32Array(p.real),new Float32Array(p.imag)));\n";
 				break;
 			case "ob":
-				js+=sp+"this."+node.name+"."+j+" = this.buffers['"+p+"'].data;\n";
+				js+=sp+"this.nodes."+node.name+"."+j+" = this.buffers['"+p+"'].data;\n";
 				break;
 			}
 		}
@@ -274,20 +279,17 @@ function ExportJs(wadobj){
 					n=c[j];
 					ci=co=0;
 				}
-				var m=(n.substr(0,3)=="osc"||n.substr(0,6)=="bufsrc");
-				if(mode==m){
-					if(c[j].i){
-						if(c[j].o)
-							js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+n+","+co+","+ci+");\n";
-						else
-							js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+n+",0,"+ci+");\n";
-					}
-					else{
-						if(c[j].o)
-							js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+n+","+co+");\n";
-						else
-							js+="      ".substr(0,indent)+"this."+node.name+".connect(this."+n+");\n";
-					}
+				if(c[j].i){
+					if(c[j].o)
+						js+="      ".substr(0,indent)+"this.nodes."+node.name+".connect(this.nodes."+n+","+co+","+ci+");\n";
+					else
+						js+="      ".substr(0,indent)+"this.nodes."+node.name+".connect(this.nodes."+n+",0,"+ci+");\n";
+				}
+				else{
+					if(c[j].o)
+						js+="      ".substr(0,indent)+"this.nodes."+node.name+".connect(this.nodes."+n+","+co+");\n";
+					else
+						js+="      ".substr(0,indent)+"this.nodes."+node.name+".connect(this.nodes."+n+");\n";
 				}
 			}
 		}
@@ -350,10 +352,21 @@ function ExportJs(wadobj){
 			+"webaudio-switch{margin:10px;}\n"
 			+"</style>\n"
 	}
-	js+="<script src='wadengine.js'></script>\n";
-	js+="<script>\nvar waddata = "+str+"\n\n";
-	js+=
-	"function AudioEngine(audioctx,destination){\n";
+	js+="<script>\n\n";
+	js+="//Usage:\n";
+	js+="//  audioengine=new WebAudioEngine();\n";
+	js+="//  audioengine.start(NodeName);    -- start specified osc/bufsrc\n";
+	js+="//  audioengine.start();            -- start all osc/bufsrc\n";
+	js+="//  audioengine.stop(NodeName);     -- stop specified osc/bufsrc\n";
+	js+="//  audioengine.stop();             -- stop all osc/bufsrc\n";
+	js+="//  audioengine.rebuild(NodeName);  -- prepare specified osc/bufsrc after stop\n";
+	js+="//  audioengine.rebuild();          -- prepare all osc/bufsrc nodes after stop\n";
+	js+="//access to each node:\n";
+	js+="//  audioengine.nodes.NodeName -- ex. audioengine.nodes.osc1\n";
+	js+="//  note that osc/bufsrc will be recreated after rebuild()\n";
+	js+="\n";
+	js+="function WebAudioEngine(audioctx,destination){\n";
+	js+="  this.waddata = "+str+";\n\n";
 	if(bufs.length){
 		js+="  // (BufferSource) or (Convolver) is used. You should place \n"
 			+"  // audio files to samples folder. * Note that the IR files are not MIT licensed.\n"
@@ -508,7 +521,7 @@ function ExportJs(wadobj){
 		"        {audio:true},\n"+
 		"        function(strm){\n"+
 		"          this.strm=strm;\n"+
-		"          this.strmsrc1 = this.audioctx.createMediaStreamSource(this.strm);\n"+
+		"          this.strmsrc = this.audioctx.createMediaStreamSource(this.strm);\n"+
 		"        }.bind(this),\n"+
 		"        function(err){\n"+
 		"          alert('getUserMedia Error.');\n"+
@@ -521,120 +534,183 @@ function ExportJs(wadobj){
 		"  };\n";
 	}
 	js+=
-	"  this.audioctx = audioctx;\n"+
+	"  this.audioctx = audioctx;\n  this.nodes = {};\n  this.nodes.destination = destination;\n"+
 	"  if(!audioctx){\n"+
 	"     AudioContext = window.AudioContext||window.webkitAudioContext;\n"+
 	"     this.audioctx = new AudioContext();\n"+
 	"  }\n"+
 	"  if(!destination)\n"+
-	"    this.destination=this.audioctx.destination;\n";
+	"    this.nodes.destination = this.audioctx.destination;\n";
 	if(usestrm)
-		js+="  this.SetupStream();\n";
+		js+="  this.strmsrc = 'wait';\n  this.SetupStream();\n";
 	if(bufs.length)
 		js+="  this.buffers = LoadBuffers(this.audioctx,this.sampleurl);\n";
-	js+="  function build(){\n    if(!this.buffers||this.buffers._ready){clearInterval(this.poll);}\n    else return;\n";
+	js+="  this.build=function(){\n    if((!this.buffers||this.buffers._ready)&&(this.strmsrc!='wait'))\n      clearInterval(this.poll);\n    else\n      return;\n";
 	for(var i=1;i<obj.length;++i){
 		var o=obj[i];
 		o.type=o.n.substr(0,3);
 		switch(o.type){
 		case "str":
+			js+="    this.nodes."+o.name+" = this.strmsrc;\n";
+			break;
+		case "osc":
+			js+="    this.nodes."+o.name+" = this.audioctx.createOscillator();\n";
+			js+=SetupParams(o,4);
+			break;
+		case "buf":
+			js+="    this.nodes."+o.name+" = this.audioctx.createBufferSource();\n";
+			js+=SetupParams(o,4);
 			break;
 		case "ele":
-			js+="    this."+o.name+" = this.audioctx.createMediaElementSource(document.getElementById(\""+o.name+"\"));\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createMediaElementSource(document.getElementById(\""+o.name+"\"));\n";
 			break;
 		case "gai":
-			js+="    this."+o.name+" = this.audioctx.createGain();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createGain();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "fil":
-			js+="    this."+o.name+" = this.audioctx.createBiquadFilter();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createBiquadFilter();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "del":
-			js+="    this."+o.name+" = this.audioctx.createDelay();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createDelay();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "pan":
-			js+="    this."+o.name+" = this.audioctx.createPanner();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createPanner();\n";
+			js+=SetupParams(o,4);
+			break;
+		case "ste":
+			js+="    this.nodes."+o.name+" = this.audioctx.createStereoPanner();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "com":
-			js+="    this."+o.name+" = this.audioctx.createDynamicsCompressor();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createDynamicsCompressor();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "sha":
-			js+="    this."+o.name+" = this.audioctx.createWaveShaper();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createWaveShaper();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "con":
-			js+="    this."+o.name+" = this.audioctx.createConvolver();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createConvolver();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "scr":
-			js+="    this."+o.name+" = this.audioctx.createScriptProcessor();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createScriptProcessor();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "ana":
-			js+="    this."+o.name+" = this.audioctx.createAnalyser();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createAnalyser();\n";
 			js+=SetupParams(o,4);
 			break;
 		case "spl":
-			js+="    this."+o.name+" = this.audioctx.createChannelSplitter();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createChannelSplitter();\n";
 			break;
 		case "mer":
-			js+="    this."+o.name+" = this.audioctx.createChannelMerger();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createChannelMerger();\n";
 			break;
 		case "fun":
-			js+="    this."+o.name+" = new Func(function(x,y){return "+o.p.func+"});\n";
+			var f=o.p.func;
+			if(!f)
+				f="440*Math.pow(2,(x+y-69)/12)";
+			js+="    this.nodes."+o.name+" = new Func(function(x,y){return "+f+"});\n";
 			break;
 		case "key":
-			js+="    this."+o.name+" = new Key('"+o.name+"');\n";
+			js+="    this.nodes."+o.name+" = new Key('"+o.name+"');\n";
 			break;
 		case "kno":
-			js+="    this."+o.name+" = new Knob('"+o.name+"');\n";
+			js+="    this.nodes."+o.name+" = new Knob('"+o.name+"');\n";
 			break;
 		case "sli":
-			js+="    this."+o.name+" = new Slider('"+o.name+"');\n";
+			js+="    this.nodes."+o.name+" = new Slider('"+o.name+"');\n";
 			break;
 		case "tog":
-			js+="    this."+o.name+" = new Toggle('"+o.name+"');\n";
+			js+="    this.nodes."+o.name+" = new Toggle('"+o.name+"');\n";
 			break;
 		}
 	}
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
-		if(o.type!="osc"&&o.type!="buf"&&o.type!="str"){
-			Connect(o,4,false);
-		}
+		Connect(o,4,false);
 	}
-	js+="  }\n  this.start=function(){\n";
-	for(var i=0;i<obj.length;++i){
-		var o=obj[i];
-		if(o.type=="osc"){
-			js+="    this."+o.name+" = this.audioctx.createOscillator();\n";
-			js+=SetupParams(o,4);
-		}
-		if(o.type=="buf"){
-			js+="    this."+o.name+" = this.audioctx.createBufferSource();\n";
-			js+=SetupParams(o,4);
-		}
-	}
-	for(var i=0;i<obj.length;++i){
-		var o=obj[i];
-		Connect(o,4,true);
-		if(o.type=="osc"||o.type=="buf"||o.type=="str")
-			Connect(o,4,false);
-	}
+	js+="  };\n";
+	js+="  this.rebuild=function(nn){\n";
+	js+="    function paramset(node,dat){\n";
+	js+="      var p=dat.p;\n";
+	js+="      for(var i in p){\n";
+	js+="        switch(i){\n";
+	js+="        case 'frequency':\n";
+	js+="        case 'detune':\n";
+	js+="        case 'playbackRate':\n";
+	js+="          node[i].value=p[i];\n";
+	js+="          break;\n";
+	js+="        case 'buffer':\n";
+	js+="          node[i]=this.buffers[p[i]].data;\n";
+	js+="          break;\n";
+	js+="        default:\n";
+	js+="          node[i]=p[i];\n";
+	js+="          break;\n";
+	js+="        }\n";
+	js+="      }\n";
+	js+="    }\n";
+	js+="    for(var i=0;i<this.waddata.length;++i){\n";
+	js+="      var n=this.waddata[i].n;\n";
+	js+="      if(!nn||nn==this.waddata[i].n){\n";
+	js+="        if(n.indexOf('osc')==0){\n";
+	js+="          this.nodes[n].disconnect();\n";
+	js+="          this.nodes[n]=this.audioctx.createOscillator();\n";
+	js+="          paramset.bind(this)(this.nodes[n],this.waddata[i]);\n";
+	js+="        }\n";
+	js+="        if(n.indexOf('buf')==0){\n";
+	js+="          this.nodes[n].disconnect();\n";
+	js+="          this.nodes[n]=this.audioctx.createBufferSource();\n";
+	js+="          paramset.bind(this)(this.nodes[n],this.waddata[i]);\n";
+	js+="        }\n";
+	js+="      }\n";
+	js+="    }\n";
+	js+="    for(i=0;i<this.waddata.length;++i){\n";
+	js+="      var n=this.waddata[i].n;\n";
+	js+="      if(this.waddata[i].c){\n";
+	js+="        for(var j=0;j<this.waddata[i].c.length;++j){\n";
+	js+="          var d=this.waddata[i].c[j];\n";
+	js+="          var ap=d.split('.');\n";
+	js+="          if(ap.length>=2)\n";
+	js+="            this.nodes[n].connect(this.nodes[ap[0]][ap[1]]);\n";
+	js+="          else\n";
+	js+="            this.nodes[n].connect(this.nodes[d]);\n";
+	js+="        }\n";
+	js+="      }\n";
+	js+="    }\n";
+	js+="  };\n";
+	js+="  this.start=function(nn){\n";
+	js+="    if(!nn){\n";
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
 		if(o.type=="osc"||o.type=="buf")
-			js+="    this."+o.name+".start(0);\n";
+			js+="      this.nodes."+o.name+".start(0);\n";
 	}
+	js+="    }\n";
+	js+="    else\n";
+	js+="      this.nodes[nn].start(0);\n";
 	js+="  };\n";
-	js+="  this.poll=setInterval(build.bind(this),100);\n"
+	js+="  this.stop=function(nn){\n";
+	js+="    if(!nn){\n";
+	for(var i=0;i<obj.length;++i){
+		var o=obj[i];
+		if(o.type=="osc"||o.type=="buf")
+			js+="      this.nodes."+o.name+".stop(0);\n";
+	}
+	js+="    }\n";
+	js+="    else\n";
+	js+="      this.nodes[nn].stop(0);\n";
+	js+="  };\n";
+	js+="  this.poll=setInterval(this.build.bind(this),100);\n"
 	js+="}\n";
-	js+="window.addEventListener('load',function(){audioengine=new AudioEngine()});\n";
-	js+="</script>\n<button onclick='audioengine.start()'>Play</button><br/>\n";
+
+	js+="window.addEventListener('load',function(){audioengine=new WebAudioEngine()});\n";
+	js+="</script>\n<button onclick='audioengine.rebuild();audioengine.start()'>Play</button> ";
+	js+="<button onclick='audioengine.stop()'>Stop</button><br/>\n";
 //	js+="window.addEventListener('load',function(){wadengine=new WADEngine(waddata)});\n";
 //	js+="</script>\n<button onclick='wadengine.start()'>Start</button><br/>\n";
 	for(var i=0;i<obj.length;++i){
@@ -704,20 +780,25 @@ function Connector(parent,subtype,dir,x,y,ch){
 	this.elem.parent=this;
 	var st=this.elem.style;
 	var col="#6f6";
+	var s;
+	var fill="fill='#6f6'";
+	var stroke="";
 	if(subtype=="ki"||subtype=="ko")
-		col="#ccf";
+		fill="fill='#ccf' ";
+	if(subtype=="ki"&&parent.subtype=="a")
+		stroke="stroke='#6f6' stroke-width='2'";
 	switch(dir){
 	case "u":
 //		var s="<svg><path d='M2,10 C2,0 17,0 17,10' fill='"+col+"'/><circle cx='14' cy='10' r='6' stroke='#08f' stroke-width='2' fill='none'/><path d='M10,5 L20,16 M10,15 L20,4' stroke='#f00' stroke-width='2'/></svg>";
-		var s="<svg><path d='M2,10 C2,0 17,0 17,10' fill='"+col+"'/></svg>";
+		s="<svg><path d='M2,10 C2,0 17,0 17,10' "+fill+stroke+"/></svg>";
 		break;
 	case "r":
 //		var s="<svg><path d='M11,2 C20,2 20,17 11,17' fill='"+col+"'/><circle cx='14' cy='10' r='6' stroke='#08f' stroke-width='2' fill='none'/><path d='M10,5 L20,16 M10,15 L20,4' stroke='#f00' stroke-width='2'/></svg>";
-		var s="<svg><path d='M11,2 C20,2 20,17 11,17' fill='"+col+"'/><path class='mark' d='M10,5 L20,16 M10,15 L20,4' stroke='#f00' stroke-width='2'/></svg>";
+		s="<svg><path d='M11,2 C20,2 20,17 11,17' "+fill+stroke+"/><path class='mark' d='M10,5 L20,16 M10,15 L20,4' stroke='#f00' stroke-width='2'/></svg>";
 		break;
 	case "l":
 //		var s="<svg><path d='M9,2 C0,2 0,17 9,17' fill='"+col+"'/><circle cx='10' cy='9' r='5' stroke='#08f' stroke-width='2' fill='none'/><path d='M6,5 L16,16 M6,15 L16,4' stroke='#f00' stroke-width='2'/></svg>";
-		var s="<svg><path d='M9,2 C0,2 0,17 9,17' fill='"+col+"'/></svg>";
+		s="<svg><path d='M9,2 C0,2 0,17 9,17' "+fill+stroke+"/></svg>";
 		break;
 	}
 //	s+="<path d='M0,0 L20,20 M0,20,L20,0' stroke='#f00' stroke-width='2'/></svg>";
@@ -1288,6 +1369,7 @@ TitleBar.prototype.GetPos=GetPos;
 
 function ANode(parent,subtype,name,x,y,actx,dest){
 	var namtab={des:"destination",osc:"osc",buf:"bufsrc",str:"strmsrc",ele:"elemsrc",gai:"gain",del:"delay",pan:"panner",
+		ste:"stereopan",
 		scr:"scrproc",fil:"filter",com:"comp",sha:"shaper",con:"conv",ana:"analys",spl:"split",mer:"merge",
 		fun:"func",kno:"knob",sli:"slider",tog:"toggle",key:"keyboard",aut:"automation",seq:"sequencer"};
 	this.parent=parent;
@@ -1365,6 +1447,24 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.elem.appendChild(this.label);
 		this.Move(x,y,320,91);
 		this.node=null;
+		this.midinote=[];
+		this.OnMIDIIn=function(node,n,v){
+			node.params[0].key.setNote(v?1:0,n);
+			for(var i=node.midinote.length-1;i>=0;--i){
+				if(node.midinote[i]==n)
+					node.midinote.splice(i,1);
+			}
+			if(v>0)
+				node.midinote.unshift(n);
+			if(node.midinote.length>0){
+				node.io.inputs[1]=node.midinote[0];
+				node.io.inputs[2]=1;
+			}
+			else{
+				node.io.inputs[2]=0;
+			}
+			node.parent.Process(true);
+		};
 		break;
 	case "tog":
 		this.child=[
@@ -1545,6 +1645,15 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		];
 		this.Move(x,y,175,201);
 		this.node=actx.createPanner();
+		break;
+	case "ste":
+		this.child=[
+			new TitleBar(this,this.name,1,1,120,19),
+			this.io=new Io(this,0, 1,21,118,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:118,y:10,t:"so",d:"r",ch:0}]),
+			this.params[0]=new Param(this,"pan","a",1, 1,41,118,19,65,null,0,"Position in stereo image, -1(left) to +1(right)"),
+		];
+		this.Move(x,y,120,61);
+		this.node=actx.createStereoPanner();
 		break;
 	case "scr":
 		this.child=[
@@ -2068,6 +2177,24 @@ function Graph(canvas,actx,dest){
 	this.layoutw=800;
 	this.layouth=600;
 	this.usestream=false;
+	this.midi=null;
+	if(navigator.requestMIDIAccess){
+		navigator.requestMIDIAccess().then(
+			function(acc){
+				console.log("MIDI ready");
+				this.midi=acc;
+				var it=acc.inputs.values();
+				for(var o=it.next();!o.done;o=it.next()){
+					o.value.onmidimessage=function(msg){
+						if(graph){
+							graph.OnMIDIIn(msg.data);
+						}
+					};
+				}
+			},
+			function(msg){console.log("MIDI failure:"+msg)}
+			);
+	}
 	document.getElementById("wmark").parent=this;
 	this.buffers=LoadBuffers(
 		actx,
@@ -2088,6 +2215,28 @@ function Graph(canvas,actx,dest){
 			"Trig Room.wav":"samples/ir/IMreverbs1/Trig Room.wav",
 		}
 	);
+	this.OnMIDIIn=function(data){
+		var d=data[0]&0xf0;
+		var n=0;
+		var v=0;
+		if(d==0x80){
+			d=0x90;
+			n=data[1];
+		}
+		else if(d==0x90){
+			v=data[2];
+			n=data[1];
+		}
+		if(d==0x90){
+		console.log(data);
+			for(var i=graph.child.length-1;i>=0;--i){
+				var node=graph.child[i];
+				if(node&&node.OnMIDIIn){
+					node.OnMIDIIn(node,n,v);
+				}
+			}
+		}
+	}
 	this.Process=function(propagate){
 		for(var i=graph.child.length-1;i>=0;--i){
 			var node=graph.child[i];
@@ -2729,6 +2878,7 @@ function MenuClick(e){
 	case "addfilt":
 	case "adddelay":
 	case "addpanner":
+	case "addstereopan":
 	case "addcomp":
 	case "addshaper":
 	case "addconv":

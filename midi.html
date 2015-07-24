@@ -1,0 +1,24 @@
+<script>
+var midi=null;
+
+function Init(){
+	if(navigator.requestMIDIAccess){
+		navigator.requestMIDIAccess().then(
+			function(acc){
+				console.log("MIDI ready");
+				this.midi=acc;
+				var it=acc.inputs.values();
+				for(var o=it.next();!o.done;o=it.next()){
+					o.value.onmidimessage=function(msg){
+						console.log(msg.data);
+					};
+				}
+			},
+			function(msg){console.log("MIDI failure:"+msg)}
+			);
+	}
+}
+
+Init();
+</script>
+

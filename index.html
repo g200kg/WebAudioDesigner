@@ -8,9 +8,7 @@
 <script src="webcomponents/webcomponents.min.js"></script>
 <link rel="import" href="webcomponents/polymer.html">
 <link rel="import" href="webcomponents/controls.html">
-<link rel="stylesheet" type="text/css" href="dialog-polyfill.css">
 <script src="webaudiodesigner.js"></script>
-<script src="dialog-polyfill.js"></script>
 <style>
 body{
 	margin:0;
@@ -448,6 +446,7 @@ dialog::backdrop {
 			<button class="menuitem" id="addfilt">BiquadFilter<div class="tooltip">Various filters e.g. LPF / HPF / BPF</div></button>
 			<button class="menuitem" id="adddelay">Delay<div class="tooltip">Dynamically adjustable variable delay</div></button>
 			<button class="menuitem" id="addpanner">Panner<div class="tooltip">Spatializing / positioning audio in 3D space</div></button>
+			<button class="menuitem" id="addstereopan">StereoPanner<div class="tooltip">Positioning audio in 2ch stereo</div></button>
 			<button class="menuitem" id="addcomp">DynamicsCompressor<div class="tooltip">Dynamics compression</div></button>
 			<button class="menuitem" id="addshaper">WaveShaper<div class="tooltip">Non-linear waveshaping effect for distortion and other more subtle warming effects</div></button>
 			<button class="menuitem" id="addconv">Convolver<div class="tooltip">Real-time linear effect (such as the sound of a concert hall)</div></button>
