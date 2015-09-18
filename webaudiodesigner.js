@@ -2111,6 +2111,10 @@ ANode.prototype.Unrealize=function(){
 		for(var i=48;i<72;++i)
 			this.params[0].key.setNote(0,i);
 	}
+	if(this.subtype=="str"){
+		this.node.disconnect();
+		this.node=null;
+	}
 };
 ANode.prototype.Connect=function(t,o,i){
 	var co,ci;

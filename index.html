@@ -409,21 +409,20 @@ dialog::backdrop {
 	</div>
 	<div id="ins"></div>
 	<div id="connokmark" class="conn"></div>
-	<div id="connngmark" class="conn"><svg width="20" height="20"><path d='M0,0 L20,20 M0,20,L20,0' stroke="#f00" stroke-width="2"/></svg></div>
+	<div id="connngmark" class="conn"><svg width="20" height="20"><path d='M0,0 L20,20 M0,20,L20,0' stroke="#f00" stroke-width="2"></path></svg></div>
 </div>
 	<textarea id="text" spellcheck="false"></textarea>
 	<datalist id="urllist">
-		<option value="samples/kerokeroshiyouyo.mp3"/>
-		<option value="http://www.g200kg.com/music/kinounokoto.mp3"/>
-		<option value="http://www.g200kg.com/music/sabire.mp3"/>
-		<option value="http://www.g200kg.com/music/omottemitari.mp3"/>
+		<option value="samples/kerokeroshiyouyo.mp3"></option>
+		<option value="http://www.g200kg.com/music/kinounokoto.mp3"></option>
+		<option value="http://www.g200kg.com/music/sabire.mp3"></option>
+		<option value="http://www.g200kg.com/music/omottemitari.mp3"></option>
 	</datalist>
 	<datalist id="fxlist">
 		<option value="440*Math.pow(2,(x+y-69)/12)">note to freq</option>
 		<option value="(x+y-69)*100">note to detune</option>
 		<option value="x*y">multiply</option>
 		<option value="x+y">add</option>
-		</label>
 	</datalist>
 	<div id="menu">
 		<button class="mainmenubtn" id="playbtn">Start<!-- <svg width="20" height="10"><polygon id="playpgn" points="10,0 10,10 20,5" fill="green"/></svg>--></button>
@@ -474,7 +473,7 @@ dialog::backdrop {
 			<button class="menuitem" id="diswire">Disconnect</button>
 		</div>
 </div>
-<dialog id="renamedialog" style="border-radius:8px;top:45%;border:1px solid #000;box-shadow: 0 3px 7px rgba(0, 0, 0, 0.5);">Rename Node : <br/><input id="renametext" spellcheck="false"></input><br/><button id="renamecancel" style="width:60px">cancel</button><button id="renameok" style="width:60px"> OK </button></dialog>
+<dialog id="renamedialog" style="border-radius:8px;top:45%;border:1px solid #000;box-shadow: 0 3px 7px rgba(0, 0, 0, 0.5);">Rename Node : <br/><input id="renametext" spellcheck="false"/><br/><button id="renamecancel" style="width:60px">cancel</button><button id="renameok" style="width:60px"> OK </button></dialog>
 <div id="jspane">
 	<button class="panebutton1" id="jsclose">Close</button>
 	<a class="panebutton2" id="jsdownload" style="color:#fff">Download</a>
