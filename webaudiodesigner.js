@@ -648,6 +648,15 @@ function ExportJs(wadobj){
 	js+="        case 'buffer':\n";
 	js+="          node[i]=this.buffers[p[i]].data;\n";
 	js+="          break;\n";
+	js+="        case 'type':\n";
+	js+="          if(p[i]!='custom'){\n";
+	js+="            node[i]=p[i];\n";
+	js+="          }\n";
+	js+="          break;\n";
+	js+="        case 'periodic':\n";
+	js+="          var tab=eval('({'+p[i]+'})');\n";
+	js+="          node.setPeriodicWave(this.audioctx.createPeriodicWave(new Float32Array(tab.real),new Float32Array(tab.imag)));\n";
+	js+="          break;\n";
 	js+="        default:\n";
 	js+="          node[i]=p[i];\n";
 	js+="          break;\n";
