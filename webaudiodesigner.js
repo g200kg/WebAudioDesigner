@@ -65,7 +65,7 @@ function GetPos(){
 	return pos;
 }
 function ToFixed(n){
-	n=n.toFixed(3);
+	n=n.toFixed(5);
 	for(var i=n.length-1;i>0;--i){
 		if(n[i]!="0")
 			break;
@@ -610,6 +610,9 @@ function ExportJs(wadobj){
 		case "mer":
 			js+="    this.nodes."+o.name+" = this.audioctx.createChannelMerger();\n";
 			break;
+		case "cns":
+			js+="    this.nodes."+o.name+" = this.audioctx.createConstantSource();\n";
+			break;
 		case "fun":
 			var f=o.p.func;
 			if(!f)
@@ -696,7 +699,7 @@ function ExportJs(wadobj){
 	js+="    if(!nn){\n";
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
-		if(o.type=="osc"||o.type=="buf")
+		if(o.type=="osc"||o.type=="buf"||o.type=="cns")
 			js+="      this.nodes."+o.name+".start(0);\n";
 	}
 	js+="    }\n";
@@ -707,7 +710,7 @@ function ExportJs(wadobj){
 	js+="    if(!nn){\n";
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
-		if(o.type=="osc"||o.type=="buf")
+		if(o.type=="osc"||o.type=="buf"||o.type=="cns")
 			js+="      this.nodes."+o.name+".stop(0);\n";
 	}
 	js+="    }\n";
@@ -1237,6 +1240,7 @@ Param.prototype.SetEdit=function(val,i){
 		break;
 	case "ts":
 		this.value=val;
+		this.parent.node.onaudioprocess=eval("("+this.value+")");
 		break;
 	case "tp":
 		this.value=val;
@@ -1379,7 +1383,7 @@ TitleBar.prototype.GetPos=GetPos;
 function ANode(parent,subtype,name,x,y,actx,dest){
 	var namtab={des:"destination",osc:"osc",buf:"bufsrc",str:"strmsrc",ele:"elemsrc",gai:"gain",del:"delay",pan:"panner",
 		ste:"stereopan",
-		scr:"scrproc",fil:"filter",com:"comp",sha:"shaper",con:"conv",ana:"analys",spl:"split",mer:"merge",
+		scr:"scrproc",fil:"filter",com:"comp",sha:"shaper",con:"conv",ana:"analys",spl:"split",mer:"merge",cns:"const",
 		fun:"func",kno:"knob",sli:"slider",tog:"toggle",key:"keyboard",aut:"automation",seq:"sequencer"};
 	this.parent=parent;
 	this.type="node";
@@ -1747,7 +1751,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.child=[
 			new TitleBar(this,this.name,1,1,185,19),
 			this.io=new Io(this,0, 1,21,183,19,[{x:0,y:10,t:"si",d:"l",ch:0},{x:183,y:10,t:"so",d:"r",ch:0}]),
-			this.mode=new Button(this,"anabtn",60,23),
+			this.anabtn=new Button(this,"anabtn",60,23),
 			this.params[0]=new Param(this,"fftSize","n",0, 1,41,183,19,145,null,2048),
 			this.params[1]=new Param(this,"minDecibels","n",0, 1,61,183,19,145,null,-100),
 			this.params[2]=new Param(this,"maxDecibels","n",0, 1,81,183,19,145,null,-39),
@@ -1763,7 +1767,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		this.elem.appendChild(this.cv);
 		this.ctx=this.cv.getContext("2d");
 		this.timerfunc=function(e){
-			if(this.mode.press)
+			if(this.anabtn.press)
 				this.node.getByteFrequencyData(this.buf);
 			else
 				this.node.getByteTimeDomainData(this.buf);
@@ -1793,6 +1797,17 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 		];
 		this.Move(x,y,100,61);
 		this.node=actx.createChannelMerger();
+		break;
+	case "cns":
+		this.child=[
+			new TitleBar(this,this.name,1,1,110,19),
+			this.io=new Io(this,0, 1,21,108,19,[{x:108,y:10,t:"so",d:"r",ch:0},{x:108,y:-10,t:"ki",d:"r",ch:0}]),
+			this.play=new Button(this,"playbtn",80,5),
+//			this.io=new Io(this,0, 1,21,108,19,[{x:108,y:10,t:"so",d:"r",ch:0}]),
+			this.params[0]=new Param(this,"offset","a",1, 1,41,108,19,55,null,1,"Offset value."),
+		];
+		this.Move(x,y,110,61);
+		this.node=actx.createConstantSource();
 		break;
 	}
 	parent.base.insertBefore(this.elem,parent.ins);
@@ -2031,6 +2046,7 @@ ANode.prototype.Process=function(propagate){
 		break;
 	case "osc":
 	case "buf":
+	case "cns":
 		if(this.io.inputs[0]&&!this.play.press)
 			this.play.Press(true);
 		if(!this.io.inputs[0]&&this.play.press)
@@ -2064,6 +2080,10 @@ ANode.prototype.Realize=function(){
 		this.node=this.actx.createBufferSource();
 		this.SetupParam();
 	}
+	if(this.subtype=="cns"){
+		this.node=this.actx.createConstantSource();
+		this.SetupParam();
+	}
 	if(this.subtype=="str"){
 		this.node=this.actx.createMediaStreamSource(graph.strm);
 	}
@@ -2090,7 +2110,7 @@ ANode.prototype.Realize=function(){
 		this.node.start(0);
 }
 ANode.prototype.Unrealize=function(){
-	if(this.subtype=="osc"||this.subtype=="buf"){
+	if(this.subtype=="osc"||this.subtype=="buf"||this.subtype=="cns"){
 		if(this.node){
 			this.node.stop(0);
 			this.node.disconnect();
@@ -2267,7 +2287,10 @@ function Graph(canvas,actx,dest){
 			if(n.type=="node"){
 				for(var j=0;j<n.child.length;++j){
 					var p=n.child[j];
-					if(p.type=="param"){
+					if(p.type=="anabtn"){
+						paramtab.anabtn=p.press?1:0;
+					}
+					else if(p.type=="param"){
 						if(p.name=="type"&&p.value=="custom"){
 							paramtab.type="custom";
 							for(var k=0;k<n.child.length;++k){
@@ -2330,6 +2353,7 @@ function Graph(canvas,actx,dest){
 			}
 		}
 		var s=JSON.stringify(o);
+		console.log(s)
 		s=s.replace(/\"([a-zA-Z]+)\":/g,"$1:");
 		s=s.replace(/,p:\{\}/g,"");
 		s=s.replace(/,c:\[\]/g,"");
@@ -2428,8 +2452,12 @@ function Graph(canvas,actx,dest){
 			else if(o.params){
 				for(var j in o.params){
 					for(var k=0;k<o.n.child.length;++k){
-						if(o.n.child[k].name==j)
+						if(o.n.child[k].type=="anabtn"){
+							o.n.child[k].Press(o.params[j]);
+						}
+						if(o.n.child[k].name==j){
 							o.n.child[k].SetEdit(o.params[j]);
+						}
 					}
 				}
 			}
@@ -2899,6 +2927,7 @@ function MenuClick(e){
 	case "addanalys":
 	case "addsplit":
 	case "addmerge":
+	case "addcnst":
 		graph.AddNode(e.target.id.substr(3,3),null,500,300);
 		MenuClear();
 		return;
@@ -2983,8 +3012,9 @@ function MouseMove(e){
 				}
 				graph.lx=dx,graph.ly=dy;
 			}
-			if(graph.dragging.type=="title")
+			if(graph.dragging.type=="title"){
 				graph.dragging.parent.Move(mouseX+graph.dragoffset.x,mouseY+graph.dragoffset.y);
+			}
 			graph.Redraw();
 		}
 		if(graph.mode==1){
@@ -3133,6 +3163,7 @@ function Play(p){
 	var b=document.getElementById("playbtn");
 	if(graph.play){
 		graph.play=false;
+		audioctx.suspend();
 		b.innerHTML="Start";
 		for(var i=graph.child.length-1;i>=0;--i){
 			var node=graph.child[i];
@@ -3146,6 +3177,7 @@ function Play(p){
 	}
 	else{
 		graph.play=true;
+		audioctx.resume();
 		b.innerHTML="Stop";
 		for(var i=graph.child.length-1;i>=0;--i){
 			var node=graph.child[i];

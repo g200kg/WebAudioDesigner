@@ -127,6 +127,7 @@ function WADEngine(graph,actx,dest){
 			case "ana":	this.Setup(this.nodes[node.n]=this.actx.createAnalyser(),node.p); break;
 			case "spl":	this.Setup(this.nodes[node.n]=this.actx.createChannelSplitter(),node.p); break;
 			case "mer":	this.Setup(this.nodes[node.n]=this.actx.createChannelMerger(),node.p); break;
+			case "cns": this.Setup(this.nodes[node.n]=this.actx.createConstantSource(),node.p); break;
 			case "fun":	this.Setup(this.nodes[node.n]=new Func(),node.p); break;
 			case "key":	this.nodes[node.n]=new Key(node.n); break;
 			case "kno":	this.nodes[node.n]=new Knob(node.n); break;
