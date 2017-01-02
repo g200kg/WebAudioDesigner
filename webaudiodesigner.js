@@ -1190,17 +1190,19 @@ Param.prototype.SetEdit=function(val,i){
 		this.Set.bind(this.edit)();
 		break;
 	case "kno":
-		this.value=val;
+		var v=parseFloat(ToFixed(parseFloat(val)));
+		this.value=this.edit.value=v;
 		if(this.edit.setValue)
-			this.edit.setValue(ToFixed(parseFloat(val)),true);
+			this.edit.setValue(v,true);
 		break;
 	case "sli":
-		this.value=val;
+		var v=parseFloat(ToFixed(parseFloat(val)));
+		this.value=this.edit.value=val;
 		if(this.edit.setValue)
 			this.edit.setValue(ToFixed(parseFloat(val)),true);
 		break;
 	case "tog":
-		this.value=val;
+		this.value=this.edit.value=val;
 		if(this.edit.setValue)
 			this.edit.setValue(val,true);
 		break;
@@ -2353,7 +2355,6 @@ function Graph(canvas,actx,dest){
 			}
 		}
 		var s=JSON.stringify(o);
-		console.log(s)
 		s=s.replace(/\"([a-zA-Z]+)\":/g,"$1:");
 		s=s.replace(/,p:\{\}/g,"");
 		s=s.replace(/,c:\[\]/g,"");
