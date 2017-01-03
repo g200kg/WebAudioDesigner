@@ -3193,7 +3193,18 @@ function Play(p){
 		graph.Reconnect();
 	}
 }
+function isMobile(){
+	var ua = navigator.userAgent;
+	if(ua.indexOf('iPhone') > 0 || ua.indexOf('iPod') > 0 || ua.indexOf('Android') > 0)
+		return true;
+	return false;
+}
 function Init(){
+	if(isMobile()) {
+		alert("This page can not work on Mobile environment.");
+		document.getElementById("loading").style.display="none";
+		return;
+	}
 	AudioContext=window.AudioContext||window.webkitAudioContext;
 	audioctx=new AudioContext();
 	graph=new Graph(document.getElementById("cv"),audioctx,audioctx.destination);
