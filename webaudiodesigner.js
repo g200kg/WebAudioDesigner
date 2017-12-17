@@ -727,6 +727,12 @@ function ExportJs(wadobj){
 //	js+="</script>\n<button onclick='wadengine.start()'>Start</button><br/>\n";
 	for(var i=0;i<obj.length;++i){
 		var o=obj[i];
+		if(o.type=="tog"){
+			js+="<webaudio-switch id=\""+o.name+"\"";
+			if(typeof(o.p.val)!="undefined")
+				js+=" value="+o.p.val;
+			js+="></webaudio-switch>";
+		}
 		if(o.type=="kno"){
 			js+="<webaudio-knob id=\""+o.name+"\" diameter=\"32\"";
 			if(typeof(o.p.min)!="undefined")
@@ -735,8 +741,8 @@ function ExportJs(wadobj){
 				js+=" max="+o.p.max;
 			if(typeof(o.p.step)!="undefined")
 				js+=" step="+o.p.step;
-			if(typeof(o.p.value)!="undefined")
-				js+=" value="+o.p.value;
+			if(typeof(o.p.val)!="undefined")
+				js+=" value="+o.p.val;
 			js+="\"></webaudio-knob>\n";
 		}
 		if(o.type=="sli"){
@@ -747,8 +753,8 @@ function ExportJs(wadobj){
 				js+=" max="+o.p.max;
 			if(typeof(o.p.step)!="undefined")
 				js+=" step="+o.p.step;
-			if(typeof(o.p.value)!="undefined")
-				js+=" value="+o.p.value;
+			if(typeof(o.p.val)!="undefined")
+				js+=" value="+o.p.val;
 			js+="\"></webaudio-slider>\n";
 		}
 		if(o.type=="key"){
