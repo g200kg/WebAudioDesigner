@@ -605,7 +605,7 @@ function ExportJs(wadobj){
 			js+=SetupParams(o,4);
 			break;
 		case "spl":
-			js+="    this.nodes."+o.name+" = this.audioctx.createChannelSplitter();\n";
+			js+="    this.nodes."+o.name+" = this.audioctx.createChannelSplitter(2);\n";
 			break;
 		case "mer":
 			js+="    this.nodes."+o.name+" = this.audioctx.createChannelMerger();\n";
@@ -1796,7 +1796,7 @@ function ANode(parent,subtype,name,x,y,actx,dest){
 			this.io=new Io(this,1, 1,21,98,39,[{x:0,y:10,t:"si",d:"l",ch:0},{x:98,y:10,t:"so",d:"r",ch:0},{x:98,y:30,t:"so",d:"r",ch:1}]),
 		];
 		this.Move(x,y,100,61);
-		this.node=actx.createChannelSplitter();
+		this.node=actx.createChannelSplitter(2);
 		break;
 	case "mer":
 		this.child=[
