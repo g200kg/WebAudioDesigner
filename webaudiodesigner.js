@@ -2465,6 +2465,11 @@ function Graph(canvas,actx,dest){
 						if(o.n.child[k].name==j){
 							o.n.child[k].SetEdit(o.params[j]);
 						}
+						if(o.type=="kno"){
+							if(typeof(o.params.val)!="undefined"){
+								o.n.params[3].SetEdit(o.params.val);
+							}
+						}
 					}
 				}
 			}
